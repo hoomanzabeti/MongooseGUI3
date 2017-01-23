@@ -657,11 +657,10 @@ class Ui_MainWindow(object):
                     print(getattr(model, function1)(addReactionName, list))
 
                 elif(index1 == ADD_METAB):
-                    print("got in here")
                     function1 = str(self.chooseFunction1.currentText())
                     addMetaboliteName = str(self.rxnParam1.text())
                     addMetaboliteCompartment = str(self.rxnParam2.text())
-                    print(">>> model.%s('%s',%s)" % (function1,addReactionName,addMetaboliteCompartment))
+                    print(">>> model.%s('%s',%s)" % (function1,addMetaboliteName,addMetaboliteCompartment))
                     print(getattr(model, function1)(addReactionName, addMetaboliteCompartment))
 
                 elif(index1 == DELETE_METAB or index1 == DELETE_RXN):
