@@ -18,8 +18,14 @@ import sys
 import logging
 import dbm
 import shelve
+import warnings
 from MetaMerge import *
 from PyQt4 import QtCore, QtGui, uic
+
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore")
+    warnings.simplefilter("ignore")
 
 
 try:
@@ -43,12 +49,15 @@ class QtHandler(logging.Handler):
         record = self.format(record)
         if record: XStream.stdout().write('%s\n'%record)
         # originally: XStream.stdout().write("{}\n".format(record))
+    #ignore warnings from terminal
+    def handler(msg_type, msg_log_context, msg_string):
+        pass
 
 logger = logging.getLogger(__name__)
 handler = QtHandler()
 handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.CRITICAL)
 
 class XStream(QtCore.QObject):
     _stdout = None
@@ -250,6 +259,8 @@ class Ui_MainWindow(object):
         self.rxnParam2.setPlaceholderText('List Of Pairs')
         self.rxnParam2.setVisible(False)
         self.label2.setVisible(False)
+
+
 
         # intializes central widget
         MainWindow.setCentralWidget(self.centralwidget)
@@ -591,6 +602,7 @@ class Ui_MainWindow(object):
         SPECIES = 6
         EXTERNAL = 7
 
+
         #grabs the index of the current dropdown option
         index1 = self.chooseFunction1.findText(self.chooseFunction1.currentText())
         # if the function has been chosen from the dropdown menu,
@@ -628,7 +640,6 @@ class Ui_MainWindow(object):
                     print(getattr(chain1, function2))
 
             else: # only one function
-
                 if( index1 == REACTIONS or index1 == REACTION_SUBSETS or index1 == METABOLITES or index1 == PRINT_RXN_FORMULA):
                     function1 = str(self.chooseFunction1.currentText())
                     param1 = self.chooseIndex.text()
@@ -675,6 +686,7 @@ class Ui_MainWindow(object):
                     print(">>> model.%s(%s)" % (function1,list))
                     print(getattr(model, function1)(list))
                 else:
+
                     function1 = str(self.chooseFunction1.currentText())
                     #call function and display output
                     print(">>> model.%s()" % (function1))
@@ -684,10 +696,11 @@ class Ui_MainWindow(object):
         else:
             print('You have not selected a function')
 
-    #ignore warnings from terminal
-    def handler(msg_type, msg_log_context, msg_string):
-        pass
 
+#handles errors
+def handler(msg_type, msg_string):
+    pass
+QtCore.qInstallMsgHandler(handler)
 
 
 
@@ -699,6 +712,6 @@ def main(): # defines main function
     ui.setupUi(MainWindow)
     MainWindow.show()
     sys.exit(app.exec_())
-    PyQt4.QtCore.qInstallMessageHandler(handler) # used to ignore warnings
+
 
 main()
