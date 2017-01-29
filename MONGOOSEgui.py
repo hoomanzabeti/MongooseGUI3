@@ -19,8 +19,10 @@ import logging
 import dbm
 import shelve
 import warnings
+from functools import partial
 from MetaMerge import *
 from PyQt4 import QtCore, QtGui, uic
+from PyQt4.QtCore import QThread
 
 
 with warnings.catch_warnings():
@@ -62,7 +64,9 @@ logger.setLevel(logging.CRITICAL)
 class XStream(QtCore.QObject):
     _stdout = None
     _stderr = None
+    process = QtCore.QProcess()
     messageWritten = QtCore.pyqtSignal(str)
+    #messageWritten = str(process.readAllStandardOutput())
     def flush( self ):
         pass
     def fileno( self ):
@@ -83,9 +87,33 @@ class XStream(QtCore.QObject):
             sys.stderr = XStream._stderr
         return XStream._stderr
 
+def streamOutput(p):
+    print("its happening")
+    p.XStream.stdout().messageWritten.connect( self.resultOutput.append )
 
+def p(x):
+    print (x)
+
+class WorkerThread(QThread):
+
+    def __init__(self,model_name, reduce_network):
+        QThread.__init__(self)
+        self.model_name = model_name
+        self.reduce_network = reduce_network
+
+    def __del__(self):
+        self.wait()
+
+
+    def run(self):
+        print(getattr(self.model_name, self.reduce_network)())
 
 class Ui_MainWindow(object):
+    def dataReady(self):
+        cursor = self.output.textCursor()
+        cursor.movePosition(cursor.End)
+        cursor.insertText(str(self.process.readAll()))
+        self.output.ensureCursorVisible()
     def setupUi(self, MainWindow):
 
         # size constraints
@@ -113,12 +141,24 @@ class Ui_MainWindow(object):
         self.resultOutput.moveCursor(QtGui.QTextCursor.End)
         self.resultOutput.verticalScrollBar().setValue(self.resultOutput.verticalScrollBar().maximum())
 
-
         #XStream.stdout().messageWritten.connect( self.resultOutput.insertPlainText )
         #XStream.stderr().messageWritten.connect( self.resultOutput.insertPlainText )
         XStream.stdout().messageWritten.connect( self.resultOutput.append )
         #XStream.stderr().messageWritten.connect( self.resultOutput.append )
         self.resultOutput.setTextInteractionFlags(QtCore.Qt.NoTextInteraction) #crucial line
+
+
+
+        '''
+         # QProcess object for external app
+        self.process = QtCore.QProcess()
+        # QProcess emits `readyRead` when there is data to be read
+        self.process.readyRead.connect(self.dataReady)
+
+        self.process.readyReadStandardOutput.connect(self.streamOutput)
+        self.process.started.connect(lambda: p('Started!'))
+        self.process.finished.connect(lambda: p('Finished!'))
+        '''
 
 
         # intializes executeAction button
@@ -690,7 +730,12 @@ class Ui_MainWindow(object):
                     function1 = str(self.chooseFunction1.currentText())
                     #call function and display output
                     print(">>> model.%s()" % (function1))
-                    print(getattr(model, function1)())
+                    if(index1 == REDUCE_NETWORK):
+                        print("Reducing network - this may take some time!")
+                        self.myThread = WorkerThread(model,function1)
+                        self.myThread.start()
+                    else:
+                        print(getattr(model, function1)())
 
 
         else:
@@ -707,6 +752,7 @@ QtCore.qInstallMsgHandler(handler)
 # need to add all below to display gui
 def main(): # defines main function
     app = QtGui.QApplication(sys.argv)
+    app.processEvents()
     MainWindow = QtGui.QMainWindow()
     ui = Ui_MainWindow()
     ui.setupUi(MainWindow)
