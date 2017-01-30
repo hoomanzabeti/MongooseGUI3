@@ -44,6 +44,7 @@ except AttributeError:
     def _translate(context, text, disambig):
         return QtGui.QApplication.translate(context, text, disambig)
 
+# redirects console output to GUI
 class QtHandler(logging.Handler):
     def __init__(self):
         logging.Handler.__init__(self)
@@ -55,12 +56,14 @@ class QtHandler(logging.Handler):
     def handler(msg_type, msg_log_context, msg_string):
         pass
 
+# redirects console output to GUI
 logger = logging.getLogger(__name__)
 handler = QtHandler()
 handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 logger.addHandler(handler)
 logger.setLevel(logging.CRITICAL)
 
+# redirects console output to GUI
 class XStream(QtCore.QObject):
     _stdout = None
     _stderr = None
@@ -87,13 +90,7 @@ class XStream(QtCore.QObject):
             sys.stderr = XStream._stderr
         return XStream._stderr
 
-def streamOutput(p):
-    print("its happening")
-    p.XStream.stdout().messageWritten.connect( self.resultOutput.append )
-
-def p(x):
-    print (x)
-
+# provided multi threading capabilities
 class WorkerThread(QThread):
 
     def __init__(self,model_name, reduce_network):
@@ -107,13 +104,10 @@ class WorkerThread(QThread):
 
     def run(self):
         print(getattr(self.model_name, self.reduce_network)())
+        print("Finished reducing network")
 
+# defines UI
 class Ui_MainWindow(object):
-    def dataReady(self):
-        cursor = self.output.textCursor()
-        cursor.movePosition(cursor.End)
-        cursor.insertText(str(self.process.readAll()))
-        self.output.ensureCursorVisible()
     def setupUi(self, MainWindow):
 
         # size constraints
@@ -146,20 +140,6 @@ class Ui_MainWindow(object):
         XStream.stdout().messageWritten.connect( self.resultOutput.append )
         #XStream.stderr().messageWritten.connect( self.resultOutput.append )
         self.resultOutput.setTextInteractionFlags(QtCore.Qt.NoTextInteraction) #crucial line
-
-
-
-        '''
-         # QProcess object for external app
-        self.process = QtCore.QProcess()
-        # QProcess emits `readyRead` when there is data to be read
-        self.process.readyRead.connect(self.dataReady)
-
-        self.process.readyReadStandardOutput.connect(self.streamOutput)
-        self.process.started.connect(lambda: p('Started!'))
-        self.process.finished.connect(lambda: p('Finished!'))
-        '''
-
 
         # intializes executeAction button
         self.executeAction = QtGui.QPushButton(self.centralwidget)
@@ -299,8 +279,6 @@ class Ui_MainWindow(object):
         self.rxnParam2.setPlaceholderText('List Of Pairs')
         self.rxnParam2.setVisible(False)
         self.label2.setVisible(False)
-
-
 
         # intializes central widget
         MainWindow.setCentralWidget(self.centralwidget)
@@ -703,7 +681,12 @@ class Ui_MainWindow(object):
                     addReactionPairs = str(self.rxnParam2.text())
                     addReactionPairs = addReactionPairs.replace('[', "")
                     addReactionPairs = addReactionPairs.replace(']', "")
-                    list = [[int(el) for el in addReactionPairs.split(',')]]
+                    count = 0
+                    if(count==0):
+                        list = [[int(el) for el in addReactionPairs.split(',')]]
+                        count = count + 1
+                    else:
+                        list = [[Fraction(el) for el in addReactionPairs.split(',')]]
                     print(">>> model.%s('%s',%s)" % (function1,addReactionName,list))
                     print(getattr(model, function1)(addReactionName, list))
 
@@ -712,7 +695,7 @@ class Ui_MainWindow(object):
                     addMetaboliteName = str(self.rxnParam1.text())
                     addMetaboliteCompartment = str(self.rxnParam2.text())
                     print(">>> model.%s('%s',%s)" % (function1,addMetaboliteName,addMetaboliteCompartment))
-                    print(getattr(model, function1)(addReactionName, addMetaboliteCompartment))
+                    print(getattr(model, function1)(addMetaboliteName, addMetaboliteCompartment))
 
                 elif(index1 == DELETE_METAB or index1 == DELETE_RXN):
                     function1 = str(self.chooseFunction1.currentText())
@@ -721,8 +704,12 @@ class Ui_MainWindow(object):
                         param1 = str( param1 )
                     else:
                         print("Choose an index")
-
-                    list = [int(el) for el in param1.split(',')]
+                    count = 0
+                    if( count == 0):
+                        list = [int(el) for el in param1.split(',')]
+                        count = count + 1
+                    else:
+                        list = [Fraction(el) for el in param1.split(',')]
                     print(">>> model.%s(%s)" % (function1,list))
                     print(getattr(model, function1)(list))
                 else:
@@ -742,7 +729,7 @@ class Ui_MainWindow(object):
             print('You have not selected a function')
 
 
-#handles errors
+#handles errors (specifically unwanted QNSView mouse dragged warning)
 def handler(msg_type, msg_string):
     pass
 QtCore.qInstallMsgHandler(handler)
