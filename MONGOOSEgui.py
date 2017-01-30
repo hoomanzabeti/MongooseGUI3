@@ -93,18 +93,28 @@ class XStream(QtCore.QObject):
 # provided multi threading capabilities
 class WorkerThread(QThread):
 
-    def __init__(self,model_name, reduce_network):
+    def __init__(self,model_name, function_name, index_name):
         QThread.__init__(self)
         self.model_name = model_name
-        self.reduce_network = reduce_network
+        self.function_name = function_name
+        self.index_name = index_name
+        self.reduceNetwork = 1
+        self.findSyntheticLethalPairs = 19
 
     def __del__(self):
         self.wait()
 
 
     def run(self):
-        print(getattr(self.model_name, self.reduce_network)())
-        print("Finished reducing network")
+        if(self.index_name == self.reduceNetwork):
+            print(getattr(self.model_name, self.function_name)())
+            print("Finished reducing network")
+        elif(self.index_name == self.findSyntheticLethalPairs):
+            print(getattr(self.model_name, self.function_name)())
+            print("Finished finding synthetic lethal pairs")
+        else:
+            print("Thread could not find work")
+            print("indexes name: %s" %(self.index_name))
 
 # defines UI
 class Ui_MainWindow(object):
@@ -719,7 +729,11 @@ class Ui_MainWindow(object):
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
                         print("Reducing network - this may take some time!")
-                        self.myThread = WorkerThread(model,function1)
+                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
+                        self.myThread.start()
+                    elif(index1 == FIND_SYNTH_LETH_PAIRS):
+                        print("Finding synthetic lethal pairs - this may take some time!")
+                        self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
                         self.myThread.start()
                     else:
                         print(getattr(model, function1)())
