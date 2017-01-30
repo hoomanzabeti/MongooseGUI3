@@ -5,40 +5,6 @@
 from GeneProcessing import *
 from functools import reduce
 
-def classifyExchange(FullNetwork, externalMetabs, Irrev):
-    # This function finds all the exchange reactions in a given full network
-    # (with the external metabolites included) and classifies them into 3 types:
-    # input only, output only, and mixed, and additionally by irreversibility.
-    m = len(FullNetwork)
-    n = len(FullNetwork[0])
-    Exchange = [y for y in range(n) if [_f for _f in [FullNetwork[x][y] for x in externalMetabs] if _f]]
-    InputIrr, InputRev, OutputIrr, OutputRev, MixedIrr, MixedRev = [], [], [], [], [], []
-    for react in Exchange:
-        In, Out = False, False
-        for x in externalMetabs:
-            if FullNetwork[x][react] < 0:
-                In = True
-            elif FullNetwork[x][react] > 0:
-                Out = True
-        if In and Out:
-            if react in Irrev:
-                MixedIrr.append(react)
-            else:
-                MixedRev.append(react)
-        elif In and (not Out):
-            if react in Irrev:
-                InputIrr.append(react)
-            else:
-                InputRev.append(react)
-        elif (not In) and Out:
-            if react in Irrev:
-                OutputIrr.append(react)
-            else:
-                OutputRev.append(react)
-        else:
-            print('This should never happen!')
-    return (InputIrr, InputRev, OutputIrr, OutputRev, MixedIrr, MixedRev)
-
 def findReachable(Network, Inputs, Allowed):
     # This function finds the reachable reactions and metabolites in a metabolic network
     # given a set of input reactions and a subset of allowed input reactions (all other

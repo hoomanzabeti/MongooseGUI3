@@ -209,6 +209,8 @@ class Network:
         self.createMatrices()
         self.updateReduction()
     def deleteMetabolites(self, metaboliteIndices):
+        assert min(metaboliteIndices) >= 0
+        assert max(metaboliteIndices) < len(self.metabolites)
         self.metabolites = [m for i, m in enumerate(self.metabolites) if i not in metaboliteIndices]
         self.createMatrices()
         self.updateReduction()
@@ -264,6 +266,8 @@ class Network:
         Exch = sum([Exch[x] for x in range(6) if x != 2], []) # omit irreversible export reactions
         return findMinimalMedia(N, biomassIndex, Exch, rec = False, I = Irr)
     def printReactionFormula(self, reactionNumber):
+        assert reactionNumber > 0
+        assert reactionNumber < len(self.reactions)
         curReact = self.reactions[reactionNumber]
         curPairs = curReact.pairs
         curMetabs = self.metabolites

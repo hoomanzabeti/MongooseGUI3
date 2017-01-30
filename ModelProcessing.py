@@ -1378,7 +1378,7 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
     for ind, pair in enumerate(CandidatePairs):
-        if verbose and (ind + 1) % 100 == 0:
+        if verbose and (ind + 1) % 1000 == 0:
             print(('Processed ' + str(ind + 1) + ' pairs so far'))
         if all([(pair[0] in z or pair[1] in z) for z in Collection]):
             if testCutSet(pair, Network, Target, Filename[:-3] + str(Iter) + Filename[-3:], rec, I):
