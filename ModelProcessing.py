@@ -4,21 +4,13 @@
 
 import os, copy, itertools, random, subprocess, shelve
 
-from Utilities import *
 from functools import reduce
+from decimal import Decimal
+from math import gcd
+from fractions import Fraction
+from Utilities import *
 
-try:
-    from fractions import Fraction
-    from math import gcd
-    Fracs = True
-except:
-    Fracs = False
-
-try:
-    from decimal import *
-    Decim = True
-except:
-    Decim = False
+zero, one = Fraction(0), Fraction(1)
 
 # ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
 ESOLVER_PATH = "/Users/Admin/Downloads/DownloadedSoftware/qsopt-ex/build/esolver/.libs/esolver"
@@ -75,7 +67,7 @@ def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
         curirrev[i] = True
     # adjust the nullspace by flipping the reactions that can carry only negative fluxes
     for i in onlyNeg:
-        curB[i] = [negate(curB[i][k]) for k in range(len(curB[i]))]
+        curB[i] = [-curB[i][k] for k in range(len(curB[i]))]
     Iter = 5
     print((str(Iter) + ') Finding and grouping reaction subsets.'))
     (Enzymes, lumpedReacts, subsetReacts, current) = processSubsets(current, curB)
@@ -156,8 +148,8 @@ def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt
     # Step 6) put back the original exchange reactions
     Iter = 5
     origMat = transpose(Matrix)
-    for y in OnlyPositive:     # negate OnlyPositive (see the paper for the explanation)
-            origMat[y] = [negate(origMat[y][x]) for x in range(m)]
+    for y in OnlyPositive:     # multiply OnlyPositive by -1 (see the paper for the explanation)
+            origMat[y] = [-origMat[y][x] for x in range(m)]
     allInds = sorted([Internal[x] for x in curcols] + External)
     fullMat = [origMat[x] for x in allInds]
     current = transpose(fullMat)
@@ -340,13 +332,6 @@ def processDeadEnds(Matrix, details):
     else:
         return (badRows, badCols, reducedMatrix)
 
-def dotProduct(List1, List2):
-    # This function computes a dot product between two lists of numbers
-    if len(List1) != len(List2):
-        print('Error: incompatible vectors!')
-    else:
-        return reduce(add, [multiply(List1[x], List2[x]) for x in range(len(List1))])
-
 def findIsozymes(N, Full = False):
     # This function determines all the sets of isozymes in a given stoichiometric matrix.
     # Isozymes are defined as reactions that are identical (not reverses of each other).
@@ -381,8 +366,8 @@ def processIsozymes(N, irrev, Full = False):
 def processZeroLoops(N):
     # This function finds the indices of zero loops and removes them from a given matrix.
     (m, n) = getSize(N)
-    loopInds = [y for y in range(n) if not filterList([N[x][y] for x in range(m)])]
-    if len(loopInds) == n: # ADDED ON 15/12/12
+    loopInds = [y for y in range(n) if not any([N[x][y] for x in range(m)])]
+    if len(loopInds) == n:
         loopInds = list(range(1,n))
     newN = [filterOut(N[x], loopInds) for x in range(m)]
     return (loopInds, newN)
@@ -397,7 +382,7 @@ def findRedundant(N):
 def processRedundant(N):
     # This function returns a list of redundant rows and a matrix without them.
     m, n = getSize(N)
-    zeroRows = [x for x in range(m) if not filterList(N[x])]
+    zeroRows = [x for x in range(m) if not any(N[x])]
     goodRows = filterOut(list(range(m)), zeroRows)
     if goodRows:
         newN = filterOut(N, zeroRows)
@@ -406,7 +391,7 @@ def processRedundant(N):
         inactive = mapList(inactive, goodRows)
         redRows = zeroRows + inactive
         newN = [newN[x] for x in active]
-    else: # ADDED ON 15/12/12
+    else:
         redRows = list(range(1,m))
         if n > 0:
             newN = [N[0]]
@@ -414,22 +399,27 @@ def processRedundant(N):
             newN = N
     return (redRows, newN)
 
-def findTBlocked(N, Irrev, basename = 'TBlocked.lp', restricted = True):
+def findTBlocked(N, Irrev, basename = 'TBlocked.lp', restricted = True, option = 'row', negated = False, rev = False):
     # This function finds all the thermodynamically blocked reactions in a metabolic network
     # given by its stoichiometric matrix and a list of irreversible reactions. See paper for
     # a detailed justification of the algorithm. Note: returned reactions are irreversible!
     # For the meaning of the "restricted" parameter, see the function findPosSupport below.
     Iter = 0
     index = basename.find('.lp')
-    weight = [1]*len(Irrev)
+    weight = [-1 if negated else 1]*len(Irrev)
     found = set()
+    Min = -1 if rev else 0
     while len(found) < len(Irrev):
-        (val, vec) = findPosSupport(N, Irrev, weight, basename[:index] + str(Iter) + basename[index:], restricted = restricted)
-        if (Fracs and val) or (not Fracs and val[0]):
+        curName = basename[:index] + str(Iter) + basename[index:]
+        (val, vec) = findPosSupport(N, Irrev, weight, curName, Min = Min, restricted = restricted, option = option)
+        if val > 0:
             Iter = Iter + 1
-            newlyFound = set([int(y[1:]) for y in list(vec.keys()) if y.startswith('Y')])
+            if rev:
+                newlyFound = set([int(y[1:]) for y,v in vec.items() if y.startswith('Y') and (-1 if negated else 1) * v > 0])
+            else:
+                newlyFound = set([int(y[1:]) for y in list(vec.keys()) if y.startswith('Y')])
             found.update(newlyFound.intersection(Irrev))
-            # Recall that the solution contains only the variables whose values are >= 0
+            # Recall that the solution contains only the variables whose values are > 0 (< 0 if negated and rev are True)
             for y in found:
                 x = Irrev.index(y) # translate into the original indices!
                 weight[x] = 0
@@ -454,15 +444,12 @@ def processEBlocked(N, irrev):
     return (EBlocked, newN)
 
 def prepareForCplex(Matrix):
-    Matrix, Mults = makeIntegral(transpose(Matrix), mults = True, decimal = True) # integralize column-wise
+    Matrix, Mults = makeIntegral(transpose(Matrix), mults = True, decim = True) # integralize column-wise
     Matrix = transpose(Matrix)
-    if Decim:
-        return [[Decimal(x.numerator)/Decimal(x.denominator) for x in y] for y in Matrix], Mults
-    else:
-        return [[float(x) for x in y] for y in Matrix], Mults
+    return [[Decimal(x.numerator)/Decimal(x.denominator) for x in y] for y in Matrix], Mults
 
-def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, Cplex = False):
-    # This function finds the vector optimizing a given weight in the rowspace of N whose
+def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, Cplex = False, option = 'row'):
+    # This function finds the vector optimizing a given weight in the row/nullspace of N whose
     # support is restricted to a given set of entries; those entries must be non-negative!
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
     # If a nonzero Min value is specified, the components in the support are at least Min.
@@ -480,11 +467,18 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
         print('Error: the weight vector is not of the right length!')
     opt += '\n'
     const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
+    if option == 'row':
+        const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
+    else:
+        const += ''.join([' + '.join([str(N[i][j]) + ' Y' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
     bounds = 'Bounds\n'
-    bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
+    if option == 'row':
+        bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
     if Min:
-        bounds += ''.join(['Y' + str(j) + ' >= ' + str(Min) + '\n' for j in support])
+        if Min > 0:
+            bounds += ''.join(['Y' + str(j) + ' >= ' + str(Min) + '\n' for j in support])
+        else:
+            bounds += ''.join([str(Min) + ' <= Y' + str(j) + ' <= ' + str(-Min) + '\n' for j in support])
     else:
         bounds += ''.join(['Y' + str(j) + ' <= 1\n' for j in support])
     if restricted:
@@ -507,7 +501,7 @@ def findSBlocked(N, NB = False):
     SBlocked = []
     (A,R) = GaussJordan(N)
     B = NullspaceBasis((A,R), True)
-    SBlocked = [j for j in range(len(B)) if not filterList(B[j])]
+    SBlocked = [j for j in range(len(B)) if not any(B[j])]
     if NB:
         return (SBlocked, B)
     else:
@@ -609,7 +603,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     f.write('End\n')
     f.close()
     val = processFile(Filename, False)
-    if (Fracs and val) or (not Fracs and val[0]):
+    if val:
         return True
     else:
         return False
@@ -661,7 +655,7 @@ def findDistance(N, special, Irrev, norm = 'inf'):
     # by special) needed in a stoichiometric matrix N to enable a unit of biomass production
     # while respecting irreversibility constraints specified by the vector of indices Irrev.
     Nt = transpose(N)
-    negBiomass = [negate(x) for x in Nt[special]]
+    negBiomass = [-x for x in Nt[special]]
     Nt = filterOut(Nt, [special])
     # recompute the indices of the irreversible reactions for Nt
     redIrrev = [x for x in Irrev if x < special] + [x - 1 for x in Irrev if x > special]
@@ -679,18 +673,28 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False):
     # The option can be 'null' for nullspace (default) or 'row' for rowspace.
     m, n = getSize(N)
     onlyPos, onlyNeg = [], []
-    for i in range(n):
-        if verbose and i % 10 == 0:
-            print(('Processed ' + str(i) + ' reactions so far'))
-        if i not in Irrev:
-            # test for effective irreversibility of the reaction
-            (val1, vec1) = findFeasible(N, i, Irrev, True,  'sub+' + str(i) + 'sets.lp', option = option)
+    allRev = [i for i in range(n) if not i in Irrev]
+    canBePositive = findTBlocked(N, allRev, basename = 'canBePositive.lp', restricted = False, option = option, rev = True)
+    canBeNegative = findTBlocked(N, allRev, basename = 'canBeNegative.lp', restricted = False, option = option, rev = True, negated = True)
+    onlyPosCandidates = [i for i in allRev if i not in canBeNegative]
+    onlyNegCandidates = [i for i in allRev if i not in canBePositive]
+    if len(onlyNegCandidates) <= 1:
+        onlyNeg = onlyNegCandidates
+    else:
+        for ind, react in enumerate(onlyNegCandidates):
+            (val1, vec1) = findFeasible(N, react, Irrev, True,  'sub+' + str(ind) + 'sets.lp', option = option)
             if (type(val1) == type([]) and len(val1) == 0): # infeasible
-                onlyNeg.append(i)
-            else:
-                (val0, vec0) = findFeasible(N, i, Irrev, False, 'sub-' + str(i) + 'sets.lp', option = option)
-                if (type(val0) == type([]) and len(val0) == 0): # infeasible
-                    onlyPos.append(i)
+                onlyNeg.append(react)
+    onlyPosCandidates = [x for x in onlyPosCandidates if x not in onlyNeg]
+    if len(onlyPosCandidates) <= 1:
+        onlyPos = onlyPosCandidates
+    else:
+        for ind, react in enumerate(onlyPosCandidates):
+            (val0, vec0) = findFeasible(N, react, Irrev, False,  'sub+' + str(ind) + 'sets.lp', option = option)
+            if (type(val0) == type([]) and len(val0) == 0): # infeasible
+                onlyPos.append(react)
+    if verbose:
+        print('This required ' + str(len(onlyNegCandidates) + len(onlyPosCandidates)) + ' linear programs')
     return (onlyPos, onlyNeg)
 
 def processUnidirectional(N, irrev, option = 'null'):
@@ -702,7 +706,7 @@ def processUnidirectional(N, irrev, option = 'null'):
     newN = [[N[x][y] for y in range(n)] for x in range(m)]
     for x in range(m):
         for y in onlyNeg:
-            newN[x][y] = negate(newN[x][y])
+            newN[x][y] = -newN[x][y]
     return (onlyPos, onlyNeg, newN)
 
 def findSubsets(N, NB = False):
@@ -723,13 +727,13 @@ def findSubsets(N, NB = False):
             return ESubsets
         else:
             # save the multiplier, make first non-zero entry 1
-            Mults[i] = nzRow[0]
-            redMatrix[i] = [divide(x, nzRow[0]) for x in Matrix[i]]
+            Mults[i] = convertToFraction(nzRow[0])
+            redMatrix[i] = [x / nzRow[0] for x in Matrix[i]]
     groups = groupIdentical(redMatrix)
     for group in groups:
         if len(group) > 1:
             mults = [Mults[x] for x in group]
-            ESubsets[group[0]] = [[group[x], divide(mults[x], mults[0])] for x in range(1, len(group))]
+            ESubsets[group[0]] = [[group[x], mults[x] / mults[0]] for x in range(1, len(group))]
     return ESubsets
 
 def processSubsets(N, curB):
@@ -744,12 +748,12 @@ def processSubsets(N, curB):
     for (ind, key) in enumerate(anchors):
         value = ESubsets[key]
         (reacts, ratios) = list(zip(*value))
-        Enzymes[ind] = (tuple([key]) + reacts, tuple([convertToFraction('1')]) + ratios)
+        Enzymes[ind] = (tuple([key]) + reacts, tuple([one]) + ratios)
         lumpedReacts += list(reacts)
         for num, react in enumerate(reacts):
             ratio = ratios[num]
             for x in range(m):
-                newN[x][key] = add(newN[x][key], multiply(ratio, newN[x][react]))
+                newN[x][key] += (ratio * newN[x][react])
     newN = [filterOut(newN[x], lumpedReacts) for x in range(m)]
     subsetReacts = anchors + lumpedReacts
     return (Enzymes, lumpedReacts, subsetReacts, newN)
@@ -761,7 +765,7 @@ def reconfigureNetwork(N, irrev):
     rev = findFalseIndices(irrev)
     newN = [[N[x][y] for y in range(n)] for x in range(m)]
     for x in range(m):
-        newN[x] += [negate(newN[x][y]) for y in rev]
+        newN[x] += [-newN[x][y] for y in rev]
     m, n0 = getSize(newN)
     newIrrev = [True] * n0
     # find columns duplicated by the reconfiguration and remove them!
@@ -909,7 +913,7 @@ def parseOutput(Filename, opt = False, verbose = False):
             print('Problem: A solution was not found!')
         return
     if opt:
-        if (Fracs and type(value) == type(convertToFraction(0))) or (not Fracs and len(value) == 2):
+        if type(value) == type(zero):
             # the optimal value is finite
             pos = 4
             while "=" in g[pos]:
@@ -972,12 +976,12 @@ def mapBackFlux(fluxes, cols, prevRev, Subsets):
         for i in range(m):
             base = reFluxes[i][head]
             for k in range(len(rest)):
-                reFluxes[i][rest[k][0]] = multiply(base, rest[k][1])
+                reFluxes[i][rest[k][0]] = base * rest[k][1]
     return reFluxes
 
 def convertVector(Dict, length):
     # Converts a dictionary representation of a vector into a list representation
-    vector = [convertToFraction(0)]*length
+    vector = [zero]*length
     for (key, value) in Dict.items():
         vector[int(key[1:])] = value
     return vector
@@ -1014,13 +1018,13 @@ def findEFMs(N, prevRev, rec = True, I = []):
                 allEFMs[i] = findEFM(N, i, [], 'EFM' + str(i) + '.lp')
     else:
         for i in range(n):
-            allEFMs[i] = findEFM(N, i, [], 'EFM' + str(i) + '.lp', rec, I)
+            allEFMs[i] = findEFM(N, i, [], 'EFM' + str(i) + '.lp', rec = False, I = I)
     return allEFMs
 
-def findEFM(N, special, zero = [], Filename = 'trial.lp', rec = True, I = []):
+def findEFM(N, special, zeros = [], Filename = 'trial.lp', rec = True, I = []):
     # This function finds a set of EFMs in a stoichiometric network N that
     # contain a special reaction with coefficient 1 and do not contain any
-    # of the reactions listed in zero. Note: assume N has been reconfigured.
+    # of the reactions listed in zeros. Note: assume N has been reconfigured.
     # Otherwise, set rec to be False and specify irreversible reactions in I.
     myEFMs = []
     if len(N) > 0:
@@ -1032,7 +1036,7 @@ def findEFM(N, special, zero = [], Filename = 'trial.lp', rec = True, I = []):
         new = True
         Iter = 0
         while (new):
-            (val, vec) = findMin1Norm(N, special, weight, zero, EFMpos, 1e-5, Filename[:-3] + 'I' + str(Iter) + '.lp', 'null', rec, I)
+            (val, vec) = findMin1Norm(N, special, weight, zeros, EFMpos, 1e-5, Filename[:-3] + 'I' + str(Iter) + '.lp', 'null', rec, I)
             if not rec: # make sure only the relevant variables are kept!
                 for x in list(vec.keys()):
                     if x[0] == 'T':
@@ -1062,7 +1066,6 @@ def peelOff(Vector, otherVectors):
     # NOTE: In general, the order in which this is done matters; however,
     # if the vector is an FM and the other vectors are EFMs, it does not!
     L = len(otherVectors)
-    zero = convertToFraction(0)
     givenVector = {}
     for x in Vector:
         givenVector[x] = Vector[x]
@@ -1073,11 +1076,11 @@ def peelOff(Vector, otherVectors):
             otherVector[x] = otherVectors[i][x]
         if not ([x for x in otherVector if x not in givenVector]):
             # the support of otherVector is a subset of that of Vector
-            ratios = [divide(givenVector[x], otherVector[x]) for x in otherVector]
-            myMin = extremeElement(ratios)
+            ratios = [givenVector[x] / otherVector[x] for x in otherVector]
+            myMin = min(ratios)
             for x in otherVector:
-                givenVector[x] = subtract(givenVector[x], multiply(myMin, otherVector[x]))
-                if compare(givenVector[x], zero) == 0:
+                givenVector[x] -= (myMin * otherVector[x])
+                if givenVector[x] == zero:
                     del givenVector[x]
     return givenVector
 
@@ -1094,12 +1097,12 @@ def findUniqueEFMs(EFMs):
     else:
         return EFMs
 
-def findMin1Norm(N, special, weight = [1], zero = [], exclude = [], eps = 1e-5, Filename = 'trial.lp', option = 'null', rec = True, I = [], Cplex = False):
+def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5, Filename = 'trial.lp', option = 'null', rec = True, I = [], Cplex = False):
     # This function finds the vector of smallest overall weight in the nullspace of N whose
     # reactions are assumed to be all irreversible unless rec is specified to be False.
     # In that case, the reactions considered to be irreversible should be specified in I.
     # Note that rec is ignored if option = 'col'! The entry corresponding to special is 1.
-    # If a zero constraint is present, the corresponding entries are forced to equal 0.
+    # If a zeros constraint is present, the corresponding entries are forced to equal 0.
     # If exclusion constraints are present, ensures the support differs from given supports.
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
     # Available option values currently are 'null' for nullspace and 'col' for columnspace.
@@ -1108,11 +1111,11 @@ def findMin1Norm(N, special, weight = [1], zero = [], exclude = [], eps = 1e-5, 
     intro += (Filename.replace('.lp', '') + '\n')
     opt = 'Minimize\n'
     opt += 'obj: '
+    if rec:
+        var = 'V'
+    else:
+        var = 'T'
     if option == 'null':
-        if rec:
-            var = 'V'
-        else:
-            var = 'T'
         if len(weight) == n:
             opt += ' + '.join([str(weight[i]) + ' ' + var + str(i) for i in range(n) if weight[i]])
         else:   # equal weights, take all of them equal to 1
@@ -1137,8 +1140,8 @@ def findMin1Norm(N, special, weight = [1], zero = [], exclude = [], eps = 1e-5, 
         const += ''.join(['T' + str(j) + ' + W' + str(j) + '>= 0\n' for j in range(m)])
         const += ''.join(['T' + str(j) + ' - W' + str(j) + '>= 0\n' for j in range(m)])
     const += 'V' + str(special) + ' = 1\n'
-    if zero:
-        const += ''.join(['V' + str(x) + ' = 0\n' for x in zero])
+    if zeros:
+        const += ''.join(['V' + str(x) + ' = 0\n' for x in zeros])
     if exclude:
         k = len(exclude)
         s = len(exclude[0])
@@ -1165,156 +1168,15 @@ def findMin1Norm(N, special, weight = [1], zero = [], exclude = [], eps = 1e-5, 
     f.close()
     return processFile(Filename, True)
 
-def extremeElement(vector, Max = False):
-    # This function finds the smallest element of a vector.
-    # If Max is True, finds the maximum element instead
-    if Fracs:
-        if Max:
-            return max(vector)
-        else:
-            return min(vector)
-    else:
-        curmin = vector[0]
-        for i in range(1, len(vector)):
-            if (Max and compare(vector[i], curmin) == 1) or (not Max and compare(vector[i], curmin) == -1):
-                curmin = vector[i]
-    return curmin
-
-def filterList(List):
-    # This function removes the zero entries from a list of fractions
-    zero = convertToFraction(0)
-    myNone = lambda x:compare(x,zero)
-    return list(filter(myNone, List))
-
-def representable(frac):
-    # This function decides whether a fraction is representable as an exact decimal
-    den = getden(frac)
-    while den % 2 == 0:
-        den /= 2
-    while den % 5 == 0:
-        den /= 5
-    if den == 1:
-        return True
-    else:
-        return False
-
-def getnum(frac):
-    # Returns the numerator of a fraction
-    if Fracs:
-        return frac.numerator
-    else:
-        return frac[0]
-
-def getden(frac):
-    # Returns the denominator of a fraction
-    if Fracs:
-        return frac.denominator
-    else:
-        return frac[1]
-
-def makeFloat(frac):
-    # This function returns the floating point number corresponding to a fraction
-    if Fracs:
-        return float(frac)
-    else:
-        return float(frac[0])/frac[1]
-
-def negate(frac):
-    # This function returns the negative of a fractional number
-    if Fracs:
-        return -frac
-    else:
-        return [-frac[0], frac[1]]
-
-def absValue(frac):
-    # This function returns the absolute value of a fractional number
-    if Fracs:
-        return abs(frac)
-    else:
-        return [abs(frac[0]), abs(frac[1])]
-
-def compare(frac0, frac1):
-    # This function defines the comparison of two fractional numbers, frac0 & frac1.
-    # Returns 1 if frac0 is bigger, -1 if frac1 is bigger, and 0 if they are equal.
-    if Fracs:
-        #return cmp(frac0, frac1) #replaced with ((frac0 > frac1) - (frac0 < frac1))
-        #taken from Python 3 website: https://docs.python.org/3.0/whatsnew/3.0.html
-        return ((frac0 > frac1) - (frac0 < frac1))
-    else:
-        diff = subtract(frac0, frac1)
-        if diff[0]*diff[1] > 0:
-            return 1
-        elif diff[0]*diff[1] < 0:
-            return -1
-        else: # the numerator is 0
-            return 0
-
-def multiply(frac0, frac1):
-    # This function defines the multiplication of two fractional numbers.
-    if Fracs:
-        return frac0*frac1
-    else:
-        [num0, den0] = frac0
-        [num1, den1] = frac1
-        num = num0*num1
-        den = den0*den1
-        gcd = GCD(num, den)
-        return [num/gcd, den/gcd]
-
-def add(frac0, frac1):
-    # This function defines the addition of two fractional numbers.
-    if Fracs:
-        return frac0+frac1
-    else:
-        [num0, den0] = frac0
-        [num1, den1] = frac1
-        num = num0*den1 + num1*den0
-        den = den0*den1
-        gcd = GCD(num, den)
-        return [num/gcd, den/gcd]
-
-def divide(frac0, frac1):
-    # This function defines the division of two fractional numbers.
-    if Fracs:
-        return frac0/frac1
-    else:
-        [num0, den0] = frac0
-        [num1, den1] = frac1
-        num = num0*den1
-        den = num1*den0
-        gcd = GCD(num, den)
-        return [num/gcd, den/gcd]
-
-def subtract(frac0, frac1):
-    # This function defines the subtraction of two fractional numbers.
-    if Fracs:
-        return frac0-frac1
-    else:
-        [num0, den0] = frac0
-        [num1, den1] = frac1
-        num = num0*den1 - num1*den0
-        den = den0*den1
-        gcd = GCD(num, den)
-        return [num/gcd, den/gcd]
-
-def GCD(a,b):
-    # This function computes the greatest common divisor of two integers
-    if Fracs:
-        return gcd(a,b)
-    else:
-        while b:
-            a,b = b, a%b
-        return a
-
 def LCM(a,b):
     # This function computes the least common multiple of two integers
-    return (a/GCD(a,b))*b
+    return (a//gcd(a,b))*b
 
-def integralize(Vector, mult = False, decimal = False):
+def integralize(Vector, mult = False, decim = False):
     # This function takes a rational vector and returns the smallest integral multiple
     # Note: this function works for a dictionary as well as a list representation(!)
     # If you need the mutliplier to be returned as well, change mult to a True value.
-    # If you only need the scaled vector to be an exact decimal, set decimal to True.
+    # If you only need the scaled vector to be an exact decimal, set decim to True.
     if type(Vector) == type({}):
         keys = list(Vector.keys())
         values = list(Vector.values())
@@ -1323,27 +1185,27 @@ def integralize(Vector, mult = False, decimal = False):
         keys = list(range(len(Vector)))
         values = Vector
         intVector = [[] for i in keys]
-    lcm = reduce(LCM, [getden(convertToFraction(z)) for z in values])
-    if decimal:
+    lcm = reduce(LCM, [convertToFraction(z).denominator for z in values])
+    if decim:
         while lcm % 2 == 0:
             lcm /= 2
         while lcm % 5 == 0:
             lcm /= 5
     for x in keys:
-        curValue = multiply(lcm, convertToFraction(Vector[x]))
-        if decimal:
+        curValue = lcm * convertToFraction(Vector[x])
+        if decim:
             intVector[x] = curValue
         else:
-            intVector[x] = getnum(curValue)
+            intVector[x] = curValue.numerator
     if not mult:
         return intVector
     else:
         return (intVector, lcm)
 
-def makeIntegral(Matrix, mults = False, decimal = False):
+def makeIntegral(Matrix, mults = False, decim = False):
     # This function makes a matrix into an integral one by multiplying rows by integers.
     # If you need the mutlipliers to be returned as well, change mults to a True value.
-    intMatrix = [integralize(Matrix[i], mults, decimal) for i in range(len(Matrix))]
+    intMatrix = [integralize(Matrix[i], mults, decim) for i in range(len(Matrix))]
     if not mults:
         return intMatrix
     else:
@@ -1761,19 +1623,13 @@ def minimalUnblock(N, Irr, growth, algo = 'norm', Filename = 'Unblock.lp'):
                 del vec[x]
         if algo == 'sense':
             L = len(vec)
-            eps = extremeElement(list(vec.values()))
-            if Fracs:
-                one = 1
-            else:
-                one = [1,1]
+            eps = min(list(vec.values()))
             Iter = 0
             while(True):
-                weight = [divide(one, eps)] * m
+                weight = [one / eps] * m
                 for x in vec:
                     if x.startswith('T'):
-                        weight[int(x[1:])] = divide(one, add(eps, vec[x]))
-                if not Fracs:
-                    weight = [round(float(x[0])/x[1], 3) for x in weight]
+                        weight[int(x[1:])] = one / (eps + vec[x])
                 (val, vec) = findMin1Norm(Ntemp, growth, weight, [], [], Filename = Filename[:-3] + 'I' + str(Iter) + '.lp', option = 'col')
                 for x in list(vec.keys()):
                     if not x.startswith('T'):
@@ -1786,7 +1642,7 @@ def minimalUnblock(N, Irr, growth, algo = 'norm', Filename = 'Unblock.lp'):
         return extractMinimal([int(x[1:]) for x in vec], checkUnblocked, [N, Irr, growth, Filename])
     elif algo == 'redund':
         # NOTE: this option ignores the thermodynamic constraints, strictly speaking!
-        nonRed = findRedundant(N, Filename)
+        nonRed = findRedundant(N)
         Nred = [N[x] for x in nonRed]
         Vec = [0]*n
         Vec[growth] = 1
@@ -1876,7 +1732,7 @@ def checkEnergyBalance(N, EFMs, Internal):
     Nred = [[N[i][j] for j in Internal] for i in range(m)]
     for i in range(L):
         support = [x for x in Internal if EFMs[i][x]]
-        (val, vec) = findPosSupport(Nred, support, Filename = 'EBA' + str(i) + '.lp', Min = 1, restricted = False)
+        (val, vec) = findPosSupport(Nred, support, Filename = 'EBA' + str(i) + '.lp', Min = 1, restricted = False, option = 'row')
         if len(val):
             checks[i] = True
     return checks
@@ -1932,7 +1788,6 @@ def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
     # Gauss = True if a Row Echelon Form of N is needed, False otherwise.
     # Returns (A, R); A: transformed input matrix; R: indices of pivots.
     nrow, ncol = getSize(N)
-    zero, one = convertToFraction(0), convertToFraction(1)
     A = [[convertToFraction(N[i][j]) for j in range(ncol)] for i in range(nrow)]
     R = []
     # Triangularization
@@ -1944,14 +1799,14 @@ def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
         if verbose and pivot % 10 == 0:
             print(('Processing column ' + str(pivot)))
         if pivoting:
-            absVals = [absValue(A[x][pivot]) for x in range(currow, nrow)]
-            bestPivot = extremeElement(absVals, Max = True)
+            absVals = [abs(A[x][pivot]) for x in range(currow, nrow)]
+            bestPivot = max(absVals)
             best = currow + absVals.index(bestPivot)
             # exchange pivot row with best row.
             if currow != best:
                 A[best], A[currow] = A[currow], A[best]
         m = A[currow][pivot]
-        if compare(m, zero) == 0:
+        if m == zero:
             # In solving a system, this would mean the algorithm broke down;
             # however, in our case, this simply means we found a zero column!
             continue
@@ -1959,11 +1814,11 @@ def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
             R.append(pivot)
             for row in range(0, nrow):
                 # NOTE: For Gaussian elimination, only eliminate the rows below the current one!
-                if ((Gauss and row > currow) or (not Gauss and row != currow)) and compare(A[row][pivot], zero):
-                    kmul = divide(A[row][pivot], m)
+                if ((Gauss and row > currow) or (not Gauss and row != currow)) and (A[row][pivot] != zero):
+                    kmul = A[row][pivot] / m
                     # Apply rectangular rule (Reduction)
                     for col in range(pivot + 1, ncol):
-                        A[row][col] = subtract(A[row][col], multiply(kmul, A[currow][col]))
+                        A[row][col] -= (kmul * A[currow][col])
                     A[row][pivot] = zero
             currow += 1
             if currow == nrow:
@@ -1978,12 +1833,11 @@ def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
             A[row][pivot] = one
             for col in nonPivots:
                 if A[row][col]:
-                    A[row][col] = divide(A[row][col], m)
+                    A[row][col] /= m
     return (A, R)
 
 def NullspaceBasis(N, GJ = False):
     # This function computes the nullspace basis using a Gauss-Jordan elimination
-    zero, one = convertToFraction(0), convertToFraction(1)
     if not GJ:
         (A, R) = GaussJordan(N)
     else:
@@ -2002,7 +1856,7 @@ def NullspaceBasis(N, GJ = False):
     for i in range(n):
         if i in R:
             ind = R.index(i)
-            NullBasis[i] = [negate(A[ind][j]) for j in Rcomp]
+            NullBasis[i] = [-A[ind][j] for j in Rcomp]
         elif i in Rcomp:
             ind = Rcomp.index(i)
             NullBasis[i] = [zero]*(n - m)
@@ -2179,7 +2033,7 @@ def classifyExchange(FullNetwork, externalMetabs, Irrev, extra = False):
     # input only, output only, and mixed, and additionally by irreversibility.
     # If extra is True, also classifies reactions with a single internal metabolite.
     m, n = getSize(FullNetwork)
-    Exchange = [y for y in range(n) if filterList([FullNetwork[x][y] for x in externalMetabs])]
+    Exchange = [y for y in range(n) if any([FullNetwork[x][y] for x in externalMetabs])]
     InputIrr, InputRev, OutputIrr, OutputRev, MixedIrr, MixedRev = [], [], [], [], [], []
     for react in Exchange:
         In, Out = False, False
@@ -2206,9 +2060,9 @@ def classifyExchange(FullNetwork, externalMetabs, Irrev, extra = False):
         else:
             print('This should never happen!')
     if extra: # identify non-exchange reactions with a single metabolite (must be internal)
-        other = [y for y in set(range(n)).difference(Exchange) if len(filterList([FullNetwork[x][y] for x in range(m)])) == 1]
+        other = [y for y in set(range(n)).difference(Exchange) if len(list(filter(None, [FullNetwork[x][y] for x in range(m)]))) == 1]
         for react in other:
-            coeff = filterList([FullNetwork[x][react] for x in range(m)])[0]
+            coeff = list(filter(None, [FullNetwork[x][react] for x in range(m)]))[0]
             if coeff > 0:
                 if react in Irrev:
                     OutputIrr.append(react)
@@ -2300,33 +2154,3 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     f.write('End\n')
     f.close()
     return processFile(Filename)
-
-def correlationRank(values1, values2, option = 'Spearman'):
-    # This function computes the correlation of the ranks between two variables.
-    # The possible options are Spearman and Kendall; both give a value in [-1,1].
-    # NOTE: we assume that there are no ties for the current implementation!
-    m, n = len(values1), len(values2)
-    if m != n:
-        print('Error: the lists do not have the same dimension!')
-        return
-    if option == 'Spearman':
-        ranks1, ranks2 = rankList(values1), rankList(values2)
-        deltas = [ranks1[x] - ranks2[x] for x in range(n)]
-        sumsqrs = float(sum([x*x for x in deltas]))
-        return 1 - 6*sumsqrs/(n*(n*n-1))
-    elif option == 'Kendall':
-        Sum = 0
-        for i in range(n):
-            for j in range(i+1, n):
-               Sum += (compare(values1[i], values1[j]) * compare(values2[i], values2[j]))
-        return 2*float(Sum)/(n*(n-1))
-    else:
-        print('Error: unrecognized option!')
-        return
-
-def rankList(values, reverse = False):
-    # This function returns the ranks of the values; the smallest gets rank 1.
-    # Ties are broken in a stable way; if reverse is True, ranks are reversed.
-    myList = [(values[x],x) for x in range(len(values))]
-    myList = sorted(myList, reverse = reverse)
-    return [x[1] for x in myList]

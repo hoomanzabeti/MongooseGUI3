@@ -1,6 +1,6 @@
 # This file contains functions for defining the network formats
 # Created by: Leonid Chindelevitch
-# Last modified: November 30, 2016
+# Last modified: January 30, 2017
 
 from OutputProcessing import CreateSMatrix
 from ModelProcessing import *

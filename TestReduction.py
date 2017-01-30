@@ -1,3 +1,7 @@
+# This file contains functions for testing the model reduction process
+# Created by: Leonid Chindelevitch
+# Last modified: January 30, 2017
+
 TEST_PATH = "/Users/admin/Documents/Mongoose/Repository/trunk/TestFiles"
 from MetaMerge import *
 os.chdir(TEST_PATH)

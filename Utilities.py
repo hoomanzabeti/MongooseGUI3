@@ -1,6 +1,6 @@
 # This file contains miscellaneous auxiliary functions for the merging process
 # Created by: Leonid Chindelevitch
-# Last modified: May 31, 2013
+# Last modified: January 30, 2017
 
 import time, re
 from math import gcd
@@ -274,7 +274,7 @@ def extractUnique(List):
 
 def convertToFraction(element):
     # This function converts a numeric or a string fraction into a fraction representation.
-    if type(element) in [type(Fraction(0)), type(0), type(0)]:
+    if type(element) in [type(Fraction(0)), type(0)]:
         return Fraction(element)
     if type(element) == type(0.0):
         element = str(element)  # convert to string first!
