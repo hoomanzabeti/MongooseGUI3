@@ -3,6 +3,7 @@
 # Last modified: January 13, 2012
 
 from Utilities import *
+from ReactionMatching import *
 
 def mergeNetworks(Reacts0, Reacts1, ReactEquiv, del0, del1, rev0, rev1, MetabEquiv, nMetab0, nMetab1, ext0, ext1, exempt0, exempt1):
     # This function merges two networks by using a map between their reactions
@@ -327,7 +328,7 @@ def NetworkMerge(MetabMatch, externals0, externals1, MetabDel0, MetabDel1, React
             # decide whether this is a 1-1 match or a 1-many/many-1 match
             c0, c1 = RxnNumbering0.count(i), RxnNumbering1.count(i)
             if c0 == 1 and c1 == 1: # 1-1 match
-                NewReact[i] = CombineReacts(NewReact0[react0], NewReact1[react1], (i in newOpposte))
+                NewReact[i] = CombineReacts(NewReact0[react0], NewReact1[react1], (i in newOpposite))
             elif c0 == 1: # 1-many match; just use the second reaction
                 NewReact[i] = NewReact1[react1]
             else:

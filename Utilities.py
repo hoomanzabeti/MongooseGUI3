@@ -3,6 +3,8 @@
 # Last modified: May 31, 2013
 
 import time, re
+from math import gcd
+from functools import reduce
 from fractions import *
 
 def revDict(Dict):
@@ -276,7 +278,7 @@ def convertToFraction(element):
         return Fraction(element)
     if type(element) == type(0.0):
         element = str(element)  # convert to string first!
-    if type(element) in [type(''), type('')]:
+    if type(element) == type(''):
         string = element
         power = 0
         string = string.lower()
@@ -403,6 +405,14 @@ def myAdd(dictionary, key, value):
         dictionary[key] = [value]
     return
 
+def myIncrement(dictionary, key, value):
+    # This function increments the key in a dictionary by the specified value.
+    if key in dictionary:
+        dictionary[key] += value
+    else:
+        dictionary[key] = value
+    return
+
 def groupIdentical(List):
     # This function returns a list of lists of indices corresponding to identical elements.
     # For instance, the input [1,2,3,2,1,3,4] should return [[0,4],[1,3],[2,5],[6]] in order.
@@ -426,3 +436,63 @@ def compareMatrices(Mat1, Mat2, tol = 1e-10):
             curDiffs = [abs(cur1[j] - cur2[j]) for j in range(n)]
             diffs += [(i,j,cur1[j],cur2[j]) for j in range(n) if curDiffs[j] > tol]
     return diffs
+
+def checkAtomicBalance(formulas, reactions, internalOnly = True):
+    if (not any(formulas)) and internalOnly:
+        print('No formulas found!')
+        return
+    faultyReactions = []
+    for i, react in enumerate(reactions):
+        curPairs = react.pairs
+        curMetabs = [x[0] for x in curPairs]
+        curCoeffs = [x[1] for x in curPairs]
+        curUnknown = [ind for ind, x in enumerate(curMetabs) if not formulas[x]]
+        curBalance = {}
+        for ind, pair in enumerate(curPairs):
+            curFormula = formulas[pair[0]]
+            for element in curFormula:
+                myIncrement(curBalance, element, curFormula[element] * pair[1])
+        curBalance = {k:v for k,v in curBalance.items() if v} # delete any balanced elements
+        if not curUnknown and not curBalance:
+            print('Error: the following elements of reaction ' + str(i) + ' do not balance: ' + str(curBalance.keys()))
+            faultyReactions.append(i)
+        elif len(curUnknown) == 1:
+            if 'e' in curBalance: # delete electrons if available since they can have either sign in a metabolite
+                del curBalance['e']
+            coeff = curCoeffs[curUnknown[0]]
+            metab = curMetabs[curUnknown[0]]
+            signs = [v * coeff for v in curBalance.values()]
+            remainders = [v % coeff for v in curBalance.values()]
+            if any([x > 0 for x in signs]) or any(remainders):
+                print('Error: the inferred formula for metabolite ' + str(metab) + ' is not valid!')
+                faultyReactions.append(i)
+            else:
+                inferredFormula = {k:-(v//coeff) for k,v in curBalance.items()}
+                formulas[metab] = inferredFormula
+                print('Inferred a valid formula for metabolite ' + str(metab) + ' to use later on!')
+        else: # greater than 1 unknown formula
+            unknownCoeffs = [curCoeffs[ind] for ind in curUnknown]
+            leftOver = curBalance.values()
+            if all([x > 0 for x in unknownCoeffs]):
+                if any([y > 0 for k,y in curBalance.items() if k != 'e']):
+                    print('Error: the reaction ' + str(i) + ' cannot be balanced due to signs!')
+                    faultyReactions.append(i)
+                elif -sum(leftOver) < len(unknownCoeffs):
+                    print('Error: the reaction ' + str(i) + ' cannot be balanced due to too many unknown metabolites!')
+                    faultyReactions.append(i)
+            elif all([x < 0 for x in unknownCoeffs]):
+                if any([y < 0 for k,y in curBalance.items() if k != 'e']):
+                    print('Error: the reaction ' + str(i) + ' cannot be balanced due to signs!')
+                    faultyReactions.append(i)
+                elif sum(leftOver) < len(unknownCoeffs):
+                    print('Error: the reaction ' + str(i) + ' cannot be balanced due to too many unknown metabolites!')
+                    faultyReactions.append(i)
+            else:
+                overallGCD = reduce(gcd, unknownCoeffs)
+                remainders = [v % overallGCD for v in curBalance.values()]
+                if any(remainders):
+                    print('Error: the reaction ' + str(i) + ' cannot be balanced due to divisibility conditions!')
+                    faultyReactions.append(i)
+    if not internalOnly:
+        print('Error: external atomic balance testing is not fully implemented yet!')
+    return faultyReactions

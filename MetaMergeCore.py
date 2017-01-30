@@ -436,7 +436,7 @@ def MatchingMaster(Reacts0, Reacts1, Metabs0, Metabs1, ReactFeats0, ReactFeats1,
                                 displayFeatures(uExt, vExt, MetabFeats0, MetabFeats1, 'metab')
                                 continue
                             elif dec == 'M':
-                                displayMatches (u, v, Metabs0, Metabs1, MetabBin, 'metab')
+                                displayMatches(uExt, vExt, Metabs0, Metabs1, MetabBin, 'metab')
                                 continue
                             else:
                                 print(("You have entered an unrecognized command: " + dec))

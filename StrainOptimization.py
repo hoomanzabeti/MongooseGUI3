@@ -1,3 +1,6 @@
+import random
+from ModelProcessing import *
+
 def strainOptimize(N, target, biomass, Lambda = 1,weight = [1]):
     # Finds a small knockout that results in a production of at least Lambda units of
     # flux through the target reaction for each unit of flux through the biomass one.

@@ -123,8 +123,8 @@ def ConvertToSBML(Reacts, growth, Irrev, Genes, MetabNames, External, ReactFeatu
     for i in range(k):
         specs += (sep*3 + '<speciesType metaid="metaid_t_' + Pad(m + i, L) + '" id="t_' + Pad(m + i, L) + '" name="' + allGenes[i] + '">' + br)
         if GeneFeatures:
-            ind = GeneNames.find(allGenes[i])
-            if ind != -1:
+            if allGenes[i] in GeneNames:
+                ind = GeneNames.index(allGenes[i])
                 specs += (sep*4 + '<notes>' + br)
                 specs += (sep*5 + '<body xmlns="http://www.w3.org/1999/xhtml">' + br)
                 for j in range(1, len(Attributes)):

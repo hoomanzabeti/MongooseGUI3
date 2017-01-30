@@ -2,14 +2,14 @@
 # Created by: Leonid Chindelevitch
 # Last modified: November 30, 2016
 
-import time, re
-from urllib.request import urlopen
-from Utilities import *
 from functools import reduce
+from urllib.request import urlopen
+import ClassDefinitions
+
 funcWords = ['al.', 'and', 'are', 'but', 'can', 'et.', 'for', 'has', 'is', 'not', 'of', 'or', 'out', 'see', 'the', 'to', 'via']
-CASRE = re.compile("[0-9]*-[0-9]*-[0-9]")
-ProteinRE = re.compile('[A-Z]{1}[a-z]{2,3}[A-Z]{0,3}[0-9]{0,2}')
-atomRE = re.compile('[A-Z]{1}[a-z]*[0-9]*')
+CASRE = ClassDefinitions.re.compile("[0-9]*-[0-9]*-[0-9]")
+ProteinRE = ClassDefinitions.re.compile('[A-Z]{1}[a-z]{2,3}[A-Z]{0,3}[0-9]{0,2}')
+atomRE = ClassDefinitions.re.compile('[A-Z]{1}[a-z]*[0-9]*')
 
 def flattenFeature(reactions, featureName):
     # For each specified reaction, transforms a list corresponding to featureName into a string 
@@ -36,7 +36,7 @@ def fixGeneCombinations(reactions):
     # For each specified reaction, changes a missing gene combination into an empty one
     for reaction in reactions:
         if reaction.geneCombination is None:
-            reaction.geneCombination = CNF([[]])
+            reaction.geneCombination = ClassDefinitions.CNF([[]])
     return
 
 def collectAllGeneNames(reactions):
@@ -75,7 +75,7 @@ def findProteinNames(Line):
         line = line.replace('/',' ')
         line = line.split(' ')
         line = [x.title() for x in line]
-        found = sorted([x for x in line if re.match(ProteinRE, x) and len(re.match(ProteinRE, x).group(0)) == len(x)])
+        found = sorted([x for x in line if ClassDefinitions.re.match(ProteinRE, x) and len(ClassDefinitions.re.match(ProteinRE, x).group(0)) == len(x)])
         return found
 
 def findAllEnzymeNames(reactions, Map = {}, delay = 0.5):
@@ -88,7 +88,7 @@ def findAllEnzymeNames(reactions, Map = {}, delay = 0.5):
         if ind % 10 == 0:
             print(('Processed ' + str(ind) + ' enzymes so far'))
         Map[ECID] = findEnzymeName(ECID)
-        time.sleep(delay)
+        ClassDefinitions.time.sleep(delay)
     for reaction in reactions:
         if 'EC numbers' in reaction.description:
             curNumbers = reaction.description['EC numbers']
@@ -163,17 +163,17 @@ def getMoreInfo(CompoundID, option = 'KEGG'):
     elif option == 'KEGG':
         url = 'http://www.genome.jp/dbget-bin/www_bget?cpd:' + CompoundID
         page = urlopen(url).read()
-        cleanPage = cleanupTags(page)
+        cleanPage = ClassDefinitions.cleanupTags(page)
         if 'Formula' in cleanPage:
             index0 = cleanPage.index('Formula')
             Formula = cleanPage[index0 + 1]
         if 'CAS:' in cleanPage:
             index1 = cleanPage.index('CAS:')
-            CASNum = re.match(CASRE, cleanPage[index1 + 1])
+            CASNum = ClassDefinitions.re.match(CASRE, cleanPage[index1 + 1])
             if CASNum:
                 CASNum = CASNum.group(0)
             else:
-                CASNum = ''.group(0)
+                CASNum = ''
     elif option == 'Bio':
         url = 'http://biocyc.org/META/NEW-IMAGE?type=COMPOUND&object=' + CompoundID
         page = urlopen(url).read()
@@ -184,7 +184,7 @@ def getMoreInfo(CompoundID, option = 'KEGG'):
             Formula = Formula.replace('<SUB>','').replace('</SUB>','')
         index2 = page.find("CAS:")
         if index2 != -1:
-            CASNum = re.match(CASRE, page[index2 + len("CAS:"):])
+            CASNum = ClassDefinitions.re.match(CASRE, page[index2 + len("CAS:"):])
             if CASNum:
                 CASNum = CASNum.group(0)
             else:
@@ -213,9 +213,9 @@ def convertFormula(Formula):
         other = [x for x in range(len(Formula)) if not (Formula[x].isalpha() or Formula[x].isdigit())]
         if other:
             Formula = Formula[:other[0]]
-        for item in re.findall(atomRE, Formula):
+        for item in ClassDefinitions.re.findall(atomRE, Formula):
             curLast = max([i for i,x in enumerate(item) if x.isalpha()]) + 1
-            myIncrement(Dico, item[:curLast], int(item[curLast:]) if curLast < len(item) else 1)
+            ClassDefinitions.myIncrement(Dico, item[:curLast], int(item[curLast:]) if curLast < len(item) else 1)
         return Dico
 
 def countFeatures(speciesList):

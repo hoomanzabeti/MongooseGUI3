@@ -10,10 +10,11 @@ numRE = re.compile('[0-9]+')
 modelRE = re.compile('[A-Z][A-Z][0-9][c]?')
 
 def findNumEssential(model, biomassIndex):
-    for subset in model.reactionSubsets:
-        if biomassIndex in zip(*subset.pairs)[0]:
-            return len(subset.pairs)
-    return 0
+    subset = model.findBiomassReactionReduced()
+    if subset != -1:
+        return len(subset.pairs)
+    else:
+        return 0
 
 def findSmallestIrrev(model, biomassIndex):
     N = model.Matrix
@@ -136,7 +137,7 @@ def findCutsets(inputShelf = 'ProcessedNetworks', outputShelf = 'NewCutsets'):
             if curBio != -1:
                 curStatus = cur.reactions[curBio].reductionStatus
                 if curStatus in [0, 4, 5]:
-                    redBio = [i for i, subset in enumerate(cur.reactionSubsets) if curBio in zip(*subset.pairs)[0]][0]
+                    redBio = cur.findBiomassReactionReduced()
                 else:
                     print('The biomass reaction is blocked')
                     redBio = -1

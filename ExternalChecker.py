@@ -1,8 +1,8 @@
 from ModelProcessing import *
 
-def checkFluxMode(Mode, Netowrk, Irreversible):
+def checkFluxMode(Mode, Network, Irreversible):
     val, vec = computeDistance(Network, Mode, norm = 'inf', Irrev = Irreversible)
-    if not (compare(val, zero) == 0):
+    if not val:
         print('The mode is not in the flux cone as specified; returning the closest flux mode')
         return vec
     else:
@@ -29,4 +29,3 @@ def checkCutSet(Set, Network, Irreversible, Target):
     else:
         print('The set is a cut set for the target reaction')
         return True
-    

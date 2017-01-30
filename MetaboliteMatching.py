@@ -85,7 +85,7 @@ def compareFeatures(items1, items2, features1, features2, minMatching = 1):
     allComparisons = []
     for ind in range(L1):
         print(('Processing feature number ' + ind))
-        curMin = minMatchind[ind]
+        curMin = minMatching[ind]
         curFeature1 = [items1[x][features1[ind]] for x in range(M1)]
         curFeature2 = [items2[x][features2[ind]] for x in range(M1)]
         curComparedFeatures = compareFeature(curFeature1, curFeature2)
@@ -100,7 +100,7 @@ def compareFeatures(items1, items2, features1, features2, minMatching = 1):
     M = reconcileMatches(allComparisons)
     return M
 
-def reconcileMatches(Matches, scoreVector = 1):
+def reconcileMatches(Matches, scoreVector = [1]):
     # Creates an overall match matrix from a collection of match matrices.
     # Adds a score from a specified score vector for each existing match.
     # By default, the scoreVector has value 1 for each matching feature.

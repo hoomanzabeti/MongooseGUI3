@@ -1,6 +1,6 @@
 # This file contains functions for processing metabolic models with Mongoose
 # Created by: Leonid Chindelevitch
-# Last modified: November 30, 2016
+# Last modified: January 30, 2017
 
 import os, copy, itertools, random, subprocess, shelve
 
@@ -8,7 +8,8 @@ from Utilities import *
 from functools import reduce
 
 try:
-    from fractions import Fraction, gcd
+    from fractions import Fraction
+    from math import gcd
     Fracs = True
 except:
     Fracs = False
@@ -19,8 +20,8 @@ try:
 except:
     Decim = False
 
-ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
-#ESOLVER_PATH = "/Users/leonidchindelevitch/Downloads/DownloadedSoftware/qsopt-ex/build/esolver/.libs/esolver"
+# ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
+ESOLVER_PATH = "/Users/Admin/Downloads/DownloadedSoftware/qsopt-ex/build/esolver/.libs/esolver"
 
 def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
     # This function computes the reduced form of a given stoichiometric matrix
@@ -1496,7 +1497,7 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     (val, vec) = findMin1Norm(Network, Target, [1]*n, [], [], 1e-5, Filename, 'null', rec, I)
     firstEntries = [int(y[1:]) for y in list(vec.keys()) if y.startswith('V')]
     L = len(firstEntries)
-    # start by checking for essentiality; if a reaction is not esesntial, add the feasible vector to the collection!
+    # start by checking for essentiality; if a reaction is not essential, add the feasible vector to the collection!
     Collection = [firstEntries]
     Iter = 0
     for Iter, entry in enumerate(firstEntries):
@@ -1515,8 +1516,8 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
     for ind, pair in enumerate(CandidatePairs):
-        if verbose and ind % 25 == 0:
-            print(('Processed ' + str(ind) + ' pairs so far'))
+        if verbose and (ind + 1) % 100 == 0:
+            print(('Processed ' + str(ind + 1) + ' pairs so far'))
         if all([(pair[0] in z or pair[1] in z) for z in Collection]):
             if testCutSet(pair, Network, Target, Filename[:-3] + str(Iter) + Filename[-3:], rec, I):
                 Lethal.append(pair)
@@ -1901,6 +1902,10 @@ def findMinimalMedia(N, growth, Exchange, rec = False, I = [], opt = True):
             for x in Exchange:
                 if x in active:
                     relevant[x] = True
+            if opt:
+                y = findTrueIndices(relevant)
+                minMedium = extractMinimal(y, checkMedium, [N, growth, Exchange, rec, I])
+                relevant = [(True if z in minMedium else False) for z in range(n)]
             if relevant not in MediaPos:
                 MediaPos.append(relevant)
                 Iter += 1
@@ -1909,11 +1914,7 @@ def findMinimalMedia(N, growth, Exchange, rec = False, I = [], opt = True):
         else:
             new = False
     Media = [[y for y in range(len(x)) if x[y]] for x in MediaPos]
-    if opt:
-        minMedia = [extractMinimal(y, checkMedium, [N, growth, Exchange, rec, I]) for y in Media]
-        return minMedia
-    else:
-        return Media
+    return Media
 
 def checkMedium(Set, N, growth, Exchange, rec = False, I = []):
     # returns True iff the given set of exchange reactions allows growth
@@ -2207,7 +2208,7 @@ def classifyExchange(FullNetwork, externalMetabs, Irrev, extra = False):
     if extra: # identify non-exchange reactions with a single metabolite (must be internal)
         other = [y for y in set(range(n)).difference(Exchange) if len(filterList([FullNetwork[x][y] for x in range(m)])) == 1]
         for react in other:
-            coeff = filterList([FullNetwork[x][y] for x in range(m)])[0]
+            coeff = filterList([FullNetwork[x][react] for x in range(m)])[0]
             if coeff > 0:
                 if react in Irrev:
                     OutputIrr.append(react)

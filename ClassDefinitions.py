@@ -5,6 +5,7 @@
 from OutputProcessing import CreateSMatrix
 from ModelProcessing import *
 from Utilities import *
+from Unrelated import *
 from fractions import Fraction
 from functools import reduce
 zero, one = Fraction(0), Fraction(1)
@@ -32,7 +33,7 @@ class Network:
         self.Matrix = [self.fullMatrix[x] for x in intMetabs]
     def checkElementalBalance(self, excludeExchange = True):
         allDescriptions = [x.species.description for x in self.metabolites]
-        allFormulas = [y['formula'] if 'formula' in y else {} for y in allDescriptions]
+        allFormulas = [(y['formula'] if 'formula' in y.keys() else {}) for y in allDescriptions]
         if excludeExchange:
             ER = self.findExchangeReactions()
             checkAtomicBalance(allFormulas, [x for i,x in enumerate(self.reactions) if i not in ER])
@@ -157,6 +158,16 @@ class Network:
             return self.biomassCoefficients.index(one)
         else:
             return -1
+    def findBiomassReactionReduced(self):
+        biomass = self.findBiomassReaction()
+        if biomass == -1:
+            print('Cannot do anything as there is no biomass reaction!')
+            return
+        Target = self.translateToReduced([biomass])
+        if not Target:
+            print('Cannot do anything as the biomass reaction is blocked!')
+            return
+        return Target[0]
     def unblockBiomassReaction(self):
         if self.checkReduced():
             N = self.Matrix
@@ -181,9 +192,20 @@ class Network:
         self.updateReduction()
     def addReaction(self, reactionName, reactionPairs, reversible = False, description = {}, biomass = False):
         nextIndex = len(self.reactions)
+        if any([x[0] < 0 for x in reactionPairs]):
+            print("Error: cannot add reaction because some metabolites have negative indices")
+            return
+        if any([x[0] >= len(self.metabolites) for x in reactionPairs]):
+            print("Error: cannot add reaction because a metabolite exceeds the maximum index, " + str(len(self.metabolites)))
+            return
+        if not all(x[1] for x in reactionPairs):
+            print("Error: cannot add reaction because some metabolites have zero coefficients")
+            return
         self.reactions.append(Reaction(reactionName, reactionPairs, nextIndex, reversible, description = description))
         if biomass:
-            self.biomassCoefficients.append(one)
+            self.biomassCoefficients = [zero for x in range(len(self.reactions))]
+            self.biomassCoefficients[-1] =  one
+        print('Added the specified reaction with number ' + str(nextIndex))
         self.createMatrices()
         self.updateReduction()
     def deleteMetabolites(self, metaboliteIndices):
@@ -197,41 +219,40 @@ class Network:
             metaboliteSpecies = self.metabolites[curSpecies.index(metaboliteName)].species
             print('Warning: a metabolite with the same species name already exists in the model.')
         else:
-            curSpecies = Species(name = metaboliteName, index = len(curSpecies), description = {})
-        self.metabolites.append(Metabolite(metaboliteName, metaboliteSpecies, compartment, nextIndex, external, description = description))
+            metaboliteSpecies = Species(name = metaboliteName, index = len(curSpecies), description = {})
+        self.metabolites.append(Metabolite(metaboliteSpecies, compartment, nextIndex, external, description = description))
+        print('Added the specified metabolite with number ' + str(nextIndex))
         self.createMatrices()
         self.updateReduction()
     def findEssentialReactions(self):
         if self.checkReduced():
             Network = self.reducedMatrix
-            growth = self.translateToReduced([self.findBiomassReaction()])[0]
-            Exchange = list(range(len(self.reactionSubsets)))
-            allowed = Exchange
-            Irr = [i for i, subset in enumerate(self.reactionSubsets) if not subset.reversible]
-            Essential = findEssential(Network, growth, Exchange, allowed, rec = False, I = Irr)
-            EssentialSubsets = [self.reactionSubsets[y] for y in Essential]
-            EssentialFull = sum([[x[0] for x in y.pairs] for y in EssentialSubsets], [])
-            numBasicEssential = len(self.reactionSubsets[growth].pairs)
-            print(('There are ' + str(numBasicEssential - 1) + ' essential reactions in reaction subset ' + str(growth) + '.'))
-            print('Returning the remaining essential reactions')
-            return sorted(EssentialFull)
+            growth = self.findBiomassReactionReduced()
+            if growth is not None:
+                Exchange = list(range(len(self.reactionSubsets)))
+                allowed = Exchange
+                Irr = [i for i, subset in enumerate(self.reactionSubsets) if not subset.reversible]
+                Essential = findEssential(Network, growth, Exchange, allowed, rec = False, I = Irr)
+                EssentialSubsets = [self.reactionSubsets[y] for y in Essential]
+                EssentialFull = sum([[x[0] for x in y.pairs] for y in EssentialSubsets], [])
+                numBasicEssential = len(self.reactionSubsets[growth].pairs)
+                print(('There are ' + str(numBasicEssential - 1) + ' essential reactions in a subset with the growth reaction.'))
+                print('Returning the remaining essential reactions')
+                return sorted(EssentialFull)
     def findSyntheticLethalPairs(self):
         if self.checkReduced():
             Network = self.reducedMatrix
-            Target = self.translateToReduced([self.findBiomassReaction()])[0]
-            Irr = [i for i, subset in enumerate(self.reactionSubsets) if not subset.reversible]
-            Essential, Lethal = findEssentialLethal(Network, Target, rec = False, I = Irr)
-            EssentialSubsets = [self.reactionSubsets[y] for y in Essential]
-            EssentialFull = sum([[x[0] for x in y.pairs] for y in EssentialSubsets], [])
-            print('The essential reactions are')
-            print((sorted(EssentialFull)))
-            allPairs = []
-            for item in Lethal:
-                first, second = item[0], item[1]
-                firstSubset = [x[0] for x in self.reactionSubsets[first].pairs]
-                secondSubset = [x[0] for x in self.reactionSubsets[second].pairs]
-                allPairs += [[x,y] for x in firstSubset for y in secondSubset]
-            return sorted(allPairs)
+            Target = self.findBiomassReactionReduced()
+            if Target is not None:
+                Irr = [i for i, subset in enumerate(self.reactionSubsets) if not subset.reversible]
+                Essential, Lethal = findEssentialLethal(Network, Target, rec = False, I = Irr, verbose = True)
+                allPairs = []
+                for item in Lethal:
+                    first, second = item[0], item[1]
+                    firstSubset = [x[0] for x in self.reactionSubsets[first].pairs]
+                    secondSubset = [x[0] for x in self.reactionSubsets[second].pairs]
+                    allPairs += [sorted([x,y]) for x in firstSubset for y in secondSubset]
+                return sorted(allPairs)
     def findMinimalMedia(self):
         N = self.Matrix
         biomassIndex = self.findBiomassReaction()

@@ -5,12 +5,11 @@
 from fractions import Fraction
 import re
 import xlrd
-from libsbml import *
+import libsbml
 from ClassDefinitions import *
 from Utilities import *
 from FeaturePreparation import convertFormula
 zero, one = Fraction(0), Fraction(1)
-reader = SBMLReader()
 geneRE = re.compile('[0-9]*\.[0-9-]*\.[0-9-]*\.[0-9-]')
 compRE = re.compile('\([a-zA-Z]\)|\[[a-zA-Z]\]')
 coeffRE = re.compile('[0-9]+.?[0-9]*')
@@ -19,7 +18,7 @@ chargeRE = re.compile('CHARGE: [-a-zA-Z0-9]*</p>')
 
 def parseSBML(filename, specialEnding = '', Cobra = False):
     # Parses an SBML file containing the network description
-    document = reader.readSBMLFromFile(filename)
+    document = libsbml.SBMLReader().readSBMLFromFile(filename)
     model = document.getModel()
     version, level = model.getVersion(), model.getLevel()
     modelName, modelId = model.getName(), model.getId()
@@ -198,18 +197,17 @@ def parseExcel(filename, biomassFilename = None, specialEnding = 'xt'):
             metabSheet = workbook.sheet_by_index(metabSheet)
             speciesInfo = parseMetaboliteSheet(metabSheet)
             mergeSpecies(network.species, speciesInfo)
-    if not any(network.biomassCoefficients):
-        biomassWorkbook = xlrd.open_workbook(biomassFilename)
-        biomassSheetNames = biomassWorkbook.sheet_names()
-        biomassSheet = findExactlyOne(biomassSheetNames, 'biomass')
-        if biomassSheet is not None:
-            biomassSheet = biomassWorkbook.sheet_by_index(biomassSheet)
-            biomassReaction = parseBiomassSheet(biomassSheet, specialEnding)
-            biomassPairs = convertPairs(biomassReaction, network.metabolites)
-            network.addReaction('biomass', biomassPairs, False, description = {'Name': 'biomass'}, biomass = True)
-    else:
+        if not any(network.biomassCoefficients):
+            biomassWorkbook = xlrd.open_workbook(biomassFilename)
+            biomassSheetNames = biomassWorkbook.sheet_names()
+            biomassSheet = findExactlyOne(biomassSheetNames, 'biomass')
+            if biomassSheet is not None:
+                biomassSheet = biomassWorkbook.sheet_by_index(biomassSheet)
+                biomassReaction = parseBiomassSheet(biomassSheet, specialEnding)
+                biomassPairs = convertPairs(biomassReaction, network.metabolites)
+                network.addReaction('biomass', biomassPairs, False, description = {'Name': 'biomass'}, biomass = True)
         network.createMatrices()
-    return network
+        return network
 
 def findSpecialSymbols(reactionList):
     # Finds special symbols used in representing the reactions in a given list of reactions
@@ -278,7 +276,6 @@ def extractMetabolites(reactionList, specialSymbols, special, defaultCompartment
                 print((str(number) + ') ' + reaction))
         else:
             compartment = defaultCompartment
-            
         if revSymbol and revSymbol in reaction:
             reversible.append(number)
             index = reaction.find(revSymbol)
@@ -593,8 +590,7 @@ def parseMetaboliteSheet(sheet):
                 if metabInfo[metab] != curInfo:
                     for key in metabInfo[metab]:
                         if key in curInfo and curInfo[key] != metabInfo[metab][key]:
-                             # print('Contradiction: ' + metab + ' has ' + key + ' equal to ' + str(metabInfo[metab][key]) + ' as well as ' + str(curInfo[key]))
-                             pass
+                            pass
             else:
                 metabInfo[metab] = curInfo
     return metabInfo
