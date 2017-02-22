@@ -666,11 +666,12 @@ def findDistance(N, special, Irrev, norm = 'inf'):
             redVec[x] = vec[x]
     return val, redVec
 
-def findUnidirectional(N, Irrev, option = 'null', verbose = False):
+def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0):
     # This function finds all unidirectional (effectively irreversible) reactions.
     # NOTE: It assumes that all the reactions in the network can have nonzero flux;
     # otherwise may incorrectly classify blocked reactions as only negative.
     # The option can be 'null' for nullspace (default) or 'row' for rowspace.
+    # If parallel > 0, this specifies the number of cores available for processing.
     m, n = getSize(N)
     onlyPos, onlyNeg = [], []
     allRev = [i for i in range(n) if not i in Irrev]
@@ -681,18 +682,38 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False):
     if len(onlyNegCandidates) <= 1:
         onlyNeg = onlyNegCandidates
     else:
-        for ind, react in enumerate(onlyNegCandidates):
-            (val1, vec1) = findFeasible(N, react, Irrev, True,  'sub+' + str(ind) + 'sets.lp', option = option)
-            if (type(val1) == type([]) and len(val1) == 0): # infeasible
-                onlyNeg.append(react)
+        if parallel: # this is to be distributed between the threads
+            splitNegPairs = [onlyNegCandidates[i::parallel] for i in range(parallel)]
+            for index, subList in enumerate(splitNegPairs):
+                subOnlyNeg = []
+                for ind, react in enumerate(subOnlyNeg):
+                    (val1, vec1) = findFeasible(N, react, Irrev, True, 'sub+' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
+                    if (type(val1) == type([]) and len(val1) == 0):  # infeasible
+                        subOnlyNeg.append(react)
+                onlyNeg += subOnlyNeg
+        else:
+            for ind, react in enumerate(onlyNegCandidates):
+                (val1, vec1) = findFeasible(N, react, Irrev, True,  'sub+' + str(ind) + 'sets.lp', option = option)
+                if (type(val1) == type([]) and len(val1) == 0): # infeasible
+                    onlyNeg.append(react)
     onlyPosCandidates = [x for x in onlyPosCandidates if x not in onlyNeg]
     if len(onlyPosCandidates) <= 1:
         onlyPos = onlyPosCandidates
     else:
-        for ind, react in enumerate(onlyPosCandidates):
-            (val0, vec0) = findFeasible(N, react, Irrev, False,  'sub+' + str(ind) + 'sets.lp', option = option)
-            if (type(val0) == type([]) and len(val0) == 0): # infeasible
-                onlyPos.append(react)
+        if parallel: # this is to be distributed between the threads
+            splitPosPairs = [onlyPosCandidates[i::parallel] for i in range(parallel)]
+            for index, subList in enumerate(splitPosPairs):
+                subOnlyPos = []
+                for ind, react in enumerate(subOnlyPos):
+                    (val0, vec0) = findFeasible(N, react, Irrev, False, 'sub-' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
+                    if (type(val0) == type([]) and len(val0) == 0):  # infeasible
+                        subOnlyPos.append(react)
+                onlyPos += subOnlyPos
+        else:
+            for ind, react in enumerate(onlyPosCandidates):
+                (val0, vec0) = findFeasible(N, react, Irrev, False,  'sub-' + str(ind) + 'sets.lp', option = option)
+                if (type(val0) == type([]) and len(val0) == 0): # infeasible
+                    onlyPos.append(react)
     if verbose:
         print('This required ' + str(len(onlyNegCandidates) + len(onlyPosCandidates)) + ' linear programs')
     return (onlyPos, onlyNeg)
@@ -1346,12 +1367,13 @@ def findSmallCutsets(Network, Target, skip = [], Kmax = 3):
                 Subsets[2] += sum([[sorted([cur,x,y]) for x in pair for y in pair if x != y] for pair in PairsT],[])
     return Subsets
 
-def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I = [], verbose = False):
+def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I = [], verbose = False, parallel = 0):
     # This function identifies all essential and synthetic lethal pairs in a given
     # network for a specified target reaction.
     # It returns a tuple, containing a list of singletons and a list of pairs.
     # The network is assumed to be irreversible unless rec is specified to be False.
     # In that case, the reactions considered to be irreversible should be specified in I.
+    # If parallel > 0, it specifies the number of cores - the checks are split into as many parts.
     m, n = getSize(Network)
     Essential, Lethal = [], []
     if n == 1:
@@ -1377,13 +1399,25 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     CandidatePairs = [[x,y] for x in allCandidates for y in allCandidates if x < y]
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
-    for ind, pair in enumerate(CandidatePairs):
-        if verbose and (ind + 1) % 1000 == 0:
-            print(('Processed ' + str(ind + 1) + ' pairs so far'))
-        if all([(pair[0] in z or pair[1] in z) for z in Collection]):
-            if testCutSet(pair, Network, Target, Filename[:-3] + str(Iter) + Filename[-3:], rec, I):
-                Lethal.append(pair)
-            Iter += 1
+    if parallel > 0:
+        splitPairs = [CandidatePairs[i::parallel] for i in range(parallel)]
+        for index, subList in enumerate(splitPairs): # each of those should eventually go into a separate thread!
+            subLethal, subIter = [], 0
+            for ind, pair in enumerate(subList):
+                if all([(pair[0] in z or pair[1] in z) for z in Collection]):
+                    if testCutSet(pair, Network, Target, Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:], rec, I):
+                        subLethal.append(pair)
+                    subIter += 1
+            Lethal += subLethal
+            Iter += subIter
+    else:
+        for ind, pair in enumerate(CandidatePairs):
+            if verbose and (ind + 1) % 1000 == 0:
+                print(('Processed ' + str(ind + 1) + ' pairs so far'))
+            if all([(pair[0] in z or pair[1] in z) for z in Collection]):
+                if testCutSet(pair, Network, Target, Filename[:-3] + str(Iter) + Filename[-3:], rec, I):
+                    Lethal.append(pair)
+                Iter += 1
     if verbose:
         print(("This required a total of " + str(Iter) + " linear programs"))
     return (Essential, Lethal)
