@@ -683,13 +683,16 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
         onlyNeg = onlyNegCandidates
     else:
         if parallel: # this is to be distributed between the threads
+
             splitNegPairs = [onlyNegCandidates[i::parallel] for i in range(parallel)]
+            #each thread should execut this 
             for index, subList in enumerate(splitNegPairs):
                 subOnlyNeg = []
                 for ind, react in enumerate(subOnlyNeg):
                     (val1, vec1) = findFeasible(N, react, Irrev, True, 'sub+' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
                     if (type(val1) == type([]) and len(val1) == 0):  # infeasible
                         subOnlyNeg.append(react)
+
                 onlyNeg += subOnlyNeg
         else:
             for ind, react in enumerate(onlyNegCandidates):
@@ -702,12 +705,14 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
     else:
         if parallel: # this is to be distributed between the threads
             splitPosPairs = [onlyPosCandidates[i::parallel] for i in range(parallel)]
+            #NOTE: parallellize too, index is the specific thread number
             for index, subList in enumerate(splitPosPairs):
                 subOnlyPos = []
                 for ind, react in enumerate(subOnlyPos):
                     (val0, vec0) = findFeasible(N, react, Irrev, False, 'sub-' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
                     if (type(val0) == type([]) and len(val0) == 0):  # infeasible
                         subOnlyPos.append(react)
+                
                 onlyPos += subOnlyPos
         else:
             for ind, react in enumerate(onlyPosCandidates):
@@ -1400,14 +1405,15 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
     if parallel > 0:
+        CandidatePairs = [pair for pair in CandidatePairs if all([(pair[0] in z or pair[1] in z) for z in Collection])]
         splitPairs = [CandidatePairs[i::parallel] for i in range(parallel)]
+
         for index, subList in enumerate(splitPairs): # each of those should eventually go into a separate thread!
             subLethal, subIter = [], 0
             for ind, pair in enumerate(subList):
-                if all([(pair[0] in z or pair[1] in z) for z in Collection]):
-                    if testCutSet(pair, Network, Target, Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:], rec, I):
-                        subLethal.append(pair)
-                    subIter += 1
+                if testCutSet(pair, Network, Target, Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:], rec, I):
+                    subLethal.append(pair)
+                subIter += 1
             Lethal += subLethal
             Iter += subIter
     else:
