@@ -110,6 +110,7 @@ class WorkerThread(QThread):
             print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
             print(getattr(self.model_name, self.function_name)())
+            print(time.time() - start_time)
         else:
             print("Thread could not find work")
             print("indexes name: %s" %(self.index_name))
