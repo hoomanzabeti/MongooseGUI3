@@ -731,7 +731,6 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
             
 
             for index, subList in enumerate(splitPosPairs):
-                subOnlyPos = []
                 async_result = pool.apply_async(parallelizedPosFindFeasible, (N, 0, Irrev, False, "", option,index))
                 subOnlyPos = async_result.get()
                 onlyPos += subOnlyPos
@@ -1430,7 +1429,7 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     CandidatePairs = [[x,y] for x in allCandidates for y in allCandidates if x < y]
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
-    parallel = 2 # testing
+    parallel = 0 # testing
     if parallel > 0:
         pool = ThreadPool(processes=parallel)
         CandidatePairs = [pair for pair in CandidatePairs if all([(pair[0] in z or pair[1] in z) for z in Collection])]
