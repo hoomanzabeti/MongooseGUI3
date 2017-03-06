@@ -9,8 +9,8 @@ from decimal import Decimal
 from math import gcd
 from fractions import Fraction
 from Utilities import *
-from multiprocessing import Pool # threading
-from multiprocessing.pool import ThreadPool # threading
+#from multiprocessing import Pool # threading
+from multiprocessing.dummy import Pool as ThreadPool # threading
 
 zero, one = Fraction(0), Fraction(1)
 
@@ -669,17 +669,17 @@ def findDistance(N, special, Irrev, norm = 'inf'):
     return val, redVec
 
 ####parallelization
-def parallelizedNegFindFeasible(N, special, Irrev, pos , Filename ,index, disable = [], negative = [],option = 'null', Cplex = False):
+def parallelizedNegFindFeasible(N, Irrev, pos , Filename ,index, option,subList):
     subOnlyNeg = []
-    for ind, react in enumerate(subOnlyNeg):
+    for ind, react in enumerate(subList): # changed from subOnlyNeg to subList!
         (val1, vec1) = findFeasible(N, react, Irrev, pos, ('sub+' + str(index) + 'V' + str(ind) + 'sets.lp'), option=option)
         if (type(val1) == type([]) and len(val1) == 0):  # infeasible
             subOnlyNeg.append(react)
     return subOnlyNeg
 
-def parallelizedPosFindFeasible(N, special, Irrev, pos , Filename ,index, disable = [], negative = [],option = 'null', Cplex = False):
+def parallelizedPosFindFeasible(N, Irrev, pos , Filename ,index, option,subList):
     subOnlyPos = []
-    for ind, react in enumerate(subOnlyPos):
+    for ind, react in enumerate(subList):# changed from subOnlyPos to subList!
         (val0, vec0) = findFeasible(N, react, Irrev, pos, ('sub-' + str(index) + 'V' + str(ind) + 'sets.lp'), option=option)
         if (type(val0) == type([]) and len(vec0) == 0):  # infeasible
             subOnlyPos.append(react)
@@ -699,21 +699,35 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
     canBeNegative = findTBlocked(N, allRev, basename = 'canBeNegative.lp', restricted = False, option = option, rev = True, negated = True)
     onlyPosCandidates = [i for i in allRev if i not in canBeNegative]
     onlyNegCandidates = [i for i in allRev if i not in canBePositive]
-    parallel = 2 #testing
+    parallel = 4 #testing
     
     if len(onlyNegCandidates) <= 1:
         onlyNeg = onlyNegCandidates
     else:
         if parallel>0: # this is to be distributed between the threads
-            pool = ThreadPool(processes = parallel)
             splitNegPairs = [onlyNegCandidates[i::parallel] for i in range(parallel)]
-            #each thread should execut this 
-            
 
+            '''
+            pool = ThreadPool(processes = parallel)
+            queue = Queue.Queue()
             for index, subList in enumerate(splitNegPairs):
-                async_result = pool.apply_async(parallelizedNegFindFeasible, (N, 0, Irrev, True, "", option,False,index))
-                subOnlyNeg = async_result.get()
-                onlyNeg += subOnlyNeg
+                t = threading.Thread(target=parallelizedNegFindFeasible, args=(N, Irrev, True, "", index, option,subList,queue))
+                t.daemon = True
+                t.start()
+                t.result_queue = queue
+                threads.append(t)
+
+            #wait for all threads to finish before closing
+            for t in threads:
+                t.join()
+            '''
+            #threading
+            pool = ThreadPool(parallel)
+            tempAsyncResultNeg = [pool.apply_async(parallelizedNegFindFeasible, args=(N, Irrev, True, "", index, option,subList)) for index, subList in enumerate(splitNegPairs) ]
+            subOnlyNeg = [resultNeg.get() for resultNeg in tempAsyncResultNeg]
+            onlyNeg = [val for sublist in subOnlyNeg for val in sublist]
+            pool.close()
+            pool.join()
             
             
         else:
@@ -726,14 +740,20 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
         onlyPos = onlyPosCandidates
     else:
         if parallel>0: # this is to be distributed between the threads
+            pool = ThreadPool(processes = parallel)
+            #tempAsyncResultPos = []
             splitPosPairs = [onlyPosCandidates[i::parallel] for i in range(parallel)]
             #NOTE: parallellize too, index is the specific thread number
-            
 
-            for index, subList in enumerate(splitPosPairs):
-                async_result = pool.apply_async(parallelizedPosFindFeasible, (N, 0, Irrev, False, "", option,index))
-                subOnlyPos = async_result.get()
-                onlyPos += subOnlyPos
+            
+            #delegates tasks to threads
+            tempAsyncResultPos = [pool.apply_async(parallelizedPosFindFeasible, args=(N, Irrev, False, "", index,option, subList)) for index, subList in enumerate(splitPosPairs) ] 
+            subOnlyPos = [resultPos.get() for resultPos in tempAsyncResultPos] #return results
+            onlyPos = [val for sublist in subOnlyPos for val in sublist] #flattens list
+            #print("onlyPos:" + str(onlyPos))
+            pool.close()
+            pool.join()
+            
             
  
         else:
@@ -743,9 +763,6 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
                     onlyPos.append(react)
     if verbose:
         print('This required ' + str(len(onlyNegCandidates) + len(onlyPosCandidates)) + ' linear programs')
-    if(parallel>0):
-        pool.close()
-        pool.join()
     return (onlyPos, onlyNeg)
 
 def processUnidirectional(N, irrev, option = 'null'):
@@ -1396,6 +1413,19 @@ def findSmallCutsets(Network, Target, skip = [], Kmax = 3):
                 PairsT = sum(PairsT, [])
                 Subsets[2] += sum([[sorted([cur,x,y]) for x in pair for y in pair if x != y] for pair in PairsT],[])
     return Subsets
+####parallelization
+def parallelizedTestCutSet(Network, Target,  rec, I,subList,index):
+    Filename = 'lethal.lp'
+    subLethal, subIter = [], 0
+    tempLethal, tempIter = [], 0
+    for ind, pair in enumerate(subList):
+        if testCutSet(pair, Network, Target, (Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:]), rec, I):
+            subLethal.append(pair)
+        subIter += 1
+    tempLethal += subLethal
+    tempIter += subIter
+    return tempLethal, tempIter
+###end parallelization
 
 def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I = [], verbose = False, parallel = 0):
     # This function identifies all essential and synthetic lethal pairs in a given
@@ -1429,25 +1459,29 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     CandidatePairs = [[x,y] for x in allCandidates for y in allCandidates if x < y]
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
-    parallel = 0 # testing
+    parallel = 4 # testing
     if parallel > 0:
         pool = ThreadPool(processes=parallel)
         CandidatePairs = [pair for pair in CandidatePairs if all([(pair[0] in z or pair[1] in z) for z in Collection])]
         splitPairs = [CandidatePairs[i::parallel] for i in range(parallel)]
-        subLethal, subIter = [], 0
         
+        '''
+        tempAsyncResults = [pool.apply_async(parallelizedTestCutSet, args=(Network, Target, rec, I,subList,index,)) for index, subList in enumerate(splitPairs) ]
+        subLethal,subIter = [resultNeg.get() for resultNeg in tempAsyncResults]
+        print("subLethal" + str(subLethal))
+        print("subIter" + str(subIter))
+        Lethal += subLethal
+        Iter += subIter
+        pool.close()
+        pool.join()
+        '''
         for index, subList in enumerate(splitPairs): # each of those should eventually go into a separate thread!
-            subLethal, subIter = [], 0
-            for ind, pair in enumerate(subList):
-                ##Threading
-                async_result = pool.apply_async(testCutSet, (pair, Network, Target, (Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:]), rec, I))
-                testCutSet_result = async_result.get()
-                ##End Threading
-                if testCutSet_result:
-                    subLethal.append(pair)
-                subIter += 1
+            async_result = pool.apply_async(parallelizedTestCutSet, (Network, Target, rec, I,subList,index))
+            subLethal,subIter = async_result.get()
             Lethal += subLethal
             Iter += subIter
+        pool.close()
+        pool.join()
         
     else:
         for ind, pair in enumerate(CandidatePairs):
@@ -1459,9 +1493,6 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
                 Iter += 1
     if verbose:
         print(("This required a total of " + str(Iter) + " linear programs"))
-    if(parallel>0):
-        pool.close()
-        pool.join()
     return (Essential, Lethal)
 
 def testSubsets(Network, Target, fluxes = [], Kmax = 3, Filename = 'trial.lp', rec = True, I = [], startInd = 0, startSubsets = []):
