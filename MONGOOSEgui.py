@@ -255,6 +255,13 @@ class Ui_MainWindow(object):
         self.chooseIndex.setPlaceholderText('[index]')
         self.chooseIndex.setVisible(False)
 
+        # intializes parallel input
+        self.chooseParallel = QtGui.QLineEdit(self.centralwidget)
+        self.chooseParallel.setGeometry(QtCore.QRect(220, 140, 53, 45))
+        self.chooseParallel.setObjectName(_fromUtf8("chooseIndex"))
+        self.chooseParallel.setPlaceholderText('threads')
+        self.chooseParallel.setVisible(False)
+
         # intializes third dropdown menu, chooses a function
         self.chooseFunction3 = QtGui.QComboBox(self.centralwidget)
         self.chooseFunction3.setGeometry(QtCore.QRect(20, 198, 200, 50))
@@ -495,6 +502,7 @@ class Ui_MainWindow(object):
               #enables which options from dropdown menu are selectable
               if(index == REACTIONS):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(True)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(True)
@@ -505,6 +513,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == REACTION_SUBSETS):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(True)
@@ -515,6 +524,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == METABOLITES):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(False)
@@ -526,14 +536,19 @@ class Ui_MainWindow(object):
           else:
             if(index == PRINT_RXN_FORMULA or index==DELETE_RXN or index==DELETE_METAB):
                 self.chooseIndex.setVisible(True)
-
+                self.chooseParallel.setVisible(False)
+            elif(index == REDUCE_NETWORK or index == FIND_SYNTH_LETH_PAIRS):
+                self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(True)
             elif(index == ADD_RXN or index == ADD_METAB):
                 self.rxnParam1.setVisible(True)
                 self.rxnParam2.setVisible(True)
                 self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(False)
 
             else:
                 self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(False)
 
             self.chooseFunction2.setVisible(False)
             self.chooseFunction3.setVisible(False)
@@ -718,14 +733,18 @@ class Ui_MainWindow(object):
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
                         print("Reducing network")
-                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
+                        #self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
                         start_time = time.time()
-                        self.myThread.start()
+                        #self.myThread.start()
+                        print(getattr(model, function1)())
+                        print(time.time() - start_time)
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
                         print("Finding synthetic lethal pairs")
-                        self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                        #self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
                         start_time = time.time()
-                        self.myThread.start()
+                        print(getattr(model, function1)())
+                        #self.myThread.start()
+                        print(time.time() - start_time)
                     else:
                         print(getattr(model, function1)())
 
