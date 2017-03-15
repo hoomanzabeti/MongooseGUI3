@@ -448,6 +448,46 @@ def prepareForCplex(Matrix):
     Matrix = transpose(Matrix)
     return [[Decimal(x.numerator)/Decimal(x.denominator) for x in y] for y in Matrix], Mults
 
+def findPosSupportNew(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, option = 'row'):
+    # This function finds the vector optimizing a given weight in the row/nullspace of N whose
+    # support is restricted to a given set of entries; those entries must be non-negative!
+    # Note: if the weight vector has a single component, it is automatically taken to be 1!
+    # If a nonzero Min value is specified, the components in the support are at least Min.
+    # If restricted = False, same but support is NOT restricted to the given set of entries.
+    m, n = getSize(N)
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
+    if Min:
+        if Min > 0:
+            curLower, curUpper = Min, None
+        else:
+            curLower, curUpper = Min, -Min
+    else:
+        curLower, curUpper = 0, 1
+    if len(weight) == len(support):
+        for ind, item in enumerate(support):
+            p.add_variable(name = 'Y' + str(item), objective = weight[ind], lower = curLower, upper = curUpper)
+    elif len(weight) == 1:
+        for ind, item in enumerate(support):
+            p.add_variable(name = 'Y' + str(item), objective = 1, lower = curLower, upper = curUpper)
+    else:
+        print('Error: the weight vector is not of the right length!')
+    for ind in range(n):
+        if ind not in support:
+            p.add_variable(name = 'Y' + str(ind), objective = 0, lower = 0, upper = (0 if restricted else None))
+    if option == row:
+        for ind in range(m):
+            if [_f for _f in N[ind] if _f]:
+                p.add_variable(name = 'X' + str(ind), objective = 0, lower = None, upper = None)
+        for j in range(n):
+            curDict = {'X'+str(i) : N[i][j] for i in range(m)}
+            curDict.update({'Y'+str(j) : -1})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs = 0)
+    else: # option == 'null'
+        for i in range(m):
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'Y'+str(j) : N[i][j] for j in range(n)}, rhs = 0)
+    return processProblem(p)
+
 def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, Cplex = False, option = 'row'):
     # This function finds the vector optimizing a given weight in the row/nullspace of N whose
     # support is restricted to a given set of entries; those entries must be non-negative!
@@ -907,6 +947,30 @@ def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, supp
     if destroyOut:
         subprocess.call(["rm", outFile])
     return result
+
+def processProblem(p, opt = False, verbose = False):
+    status = p.solve()
+    dico = {}
+    if status == qsoptex.SolutionStatus.OPTIMAL:
+        value = p.get_objective_value()
+    elif status == qsoptex.SolutionStatus.UNBOUNDED:
+        if verbose:
+            print('Note: problem is unbounded!')
+        value = [float('Inf')]
+    elif status == qsoptex.SolutionStatus.INFEASIBLE:
+        if verbose:
+            print('Note: problem is infeasible!')
+        value = []
+    else:
+        if verbose:
+            print('Problem: A solution was not found!')
+        return
+    if opt:
+        if type(value) == type(zero): # the optimal value is finite
+            dico = {} ### FROM HERE!
+        return (value, dico)
+    else:
+        return value
 
 def parseOutput(Filename, opt = False, verbose = False):
     # This function parses a solution file in the QSOpt_ex format

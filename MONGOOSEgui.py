@@ -8,10 +8,7 @@ Coding Standard:
 Most Recent Changes:
 --------------------
 
-1. Changes addMetabolite: (line 661)
-addMetabolite now takes the following parameters: (string, character)
-2. Fixed error that would display array index when not necessary
-
+1.Multi threading
 '''
 import os
 import sys
@@ -19,10 +16,12 @@ import logging
 import dbm
 import shelve
 import warnings
+import time
 from functools import partial
 from MetaMerge import *
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtCore import QThread
+
 
 
 with warnings.catch_warnings():
@@ -108,22 +107,22 @@ class WorkerThread(QThread):
     def run(self):
         if(self.index_name == self.reduceNetwork):
             print(getattr(self.model_name, self.function_name)())
-            print("Finished reducing network")
+            print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
             print(getattr(self.model_name, self.function_name)())
-            print("Finished finding synthetic lethal pairs")
+            print(time.time() - start_time)
         else:
             print("Thread could not find work")
             print("indexes name: %s" %(self.index_name))
 
 # defines UI
 class Ui_MainWindow(object):
+
     def setupUi(self, MainWindow):
 
         # size constraints
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
-        #MainWindow.resize(600, 470)
-        MainWindow.resize(650, 470)
+        MainWindow.resize(660, 500)
 
         # central widget ( main window for buttons )
         self.centralwidget = QtGui.QWidget(MainWindow)
@@ -131,8 +130,7 @@ class Ui_MainWindow(object):
 
         # output
         self.resultOutput = QtGui.QTextEdit(self.centralwidget)
-        #self.resultOutput.setGeometry(QtCore.QRect(230, 50, 361, 370))
-        self.resultOutput.setGeometry(QtCore.QRect(280, 50, 361, 390))
+        self.resultOutput.setGeometry(QtCore.QRect(280, 50, 361, 440))
         self.resultOutput.setObjectName(_fromUtf8("resultOutput"))
 
         #disables the output box to be changed if user clicks, new lines printed out at bottom
@@ -145,10 +143,8 @@ class Ui_MainWindow(object):
         self.resultOutput.moveCursor(QtGui.QTextCursor.End)
         self.resultOutput.verticalScrollBar().setValue(self.resultOutput.verticalScrollBar().maximum())
 
-        #XStream.stdout().messageWritten.connect( self.resultOutput.insertPlainText )
-        #XStream.stderr().messageWritten.connect( self.resultOutput.insertPlainText )
-        XStream.stdout().messageWritten.connect( self.resultOutput.append )
-        #XStream.stderr().messageWritten.connect( self.resultOutput.append )
+        XStream.stdout().messageWritten.connect( self.resultOutput.append ) #redirects print statements from terminal to gui
+        #XStream.stderr().messageWritten.connect( self.resultOutput.append ) #redirects errors from terminal to gui
         self.resultOutput.setTextInteractionFlags(QtCore.Qt.NoTextInteraction) #crucial line
 
         # intializes executeAction button
@@ -258,6 +254,13 @@ class Ui_MainWindow(object):
         self.chooseIndex.setObjectName(_fromUtf8("chooseIndex"))
         self.chooseIndex.setPlaceholderText('[index]')
         self.chooseIndex.setVisible(False)
+
+        # intializes parallel input
+        self.chooseParallel = QtGui.QLineEdit(self.centralwidget)
+        self.chooseParallel.setGeometry(QtCore.QRect(220, 140, 53, 45))
+        self.chooseParallel.setObjectName(_fromUtf8("chooseIndex"))
+        self.chooseParallel.setPlaceholderText('threads')
+        self.chooseParallel.setVisible(False)
 
         # intializes third dropdown menu, chooses a function
         self.chooseFunction3 = QtGui.QComboBox(self.centralwidget)
@@ -403,7 +406,6 @@ class Ui_MainWindow(object):
     # saves model
     def save_model (self):
         #!!!! prompt for key then assign
-        #choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Model', 'Are you sure you want to save the model?', QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Model', 'Are you sure you want to save the model?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
         if choice == QtGui.QMessageBox.Yes:
             savedModel = "'" + modelInput + "'"
@@ -414,7 +416,6 @@ class Ui_MainWindow(object):
             pass
 
         choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save & Quit', 'Would you like to exit the application?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
-        #choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save & Quit', 'Would you like to exit the application?', QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
             print("Closing shelve file")
             # close the shelve file
@@ -425,7 +426,6 @@ class Ui_MainWindow(object):
 
     def write_sbml(self):
         choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Write SBML', 'Are you sure you want to write to SBML?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
-        #choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Contents', 'Are you sure you want to save the contents?', QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
             name = QtGui.QFileDialog.getSaveFileName(QtGui.QMainWindow(), 'Save File')
             model.writeSBML(name)
@@ -502,6 +502,7 @@ class Ui_MainWindow(object):
               #enables which options from dropdown menu are selectable
               if(index == REACTIONS):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(True)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(True)
@@ -512,6 +513,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == REACTION_SUBSETS):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(True)
@@ -522,6 +524,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == METABOLITES):
                   self.chooseIndex.setVisible(True)
+                  self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
                   self.chooseFunction2.model().item(PAIRS).setEnabled(False)
@@ -533,14 +536,19 @@ class Ui_MainWindow(object):
           else:
             if(index == PRINT_RXN_FORMULA or index==DELETE_RXN or index==DELETE_METAB):
                 self.chooseIndex.setVisible(True)
-
+                self.chooseParallel.setVisible(False)
+            elif(index == REDUCE_NETWORK or index == FIND_SYNTH_LETH_PAIRS):
+                self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(True)
             elif(index == ADD_RXN or index == ADD_METAB):
                 self.rxnParam1.setVisible(True)
                 self.rxnParam2.setVisible(True)
                 self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(False)
 
             else:
                 self.chooseIndex.setVisible(False)
+                self.chooseParallel.setVisible(False)
 
             self.chooseFunction2.setVisible(False)
             self.chooseFunction3.setVisible(False)
@@ -582,20 +590,16 @@ class Ui_MainWindow(object):
         EXTERNAL = 7
 
         if ( index1 == METABOLITES and index2 == SPECIES):
-            #print "You have selected %s " %self.chooseFunction1.currentText()
-            #print "You have selected %s " %self.chooseFunction2.currentText()
             self.chooseFunction3.setVisible(True)
             dropdown3_open = True
         else:
-            #print "You have selected %s " %self.chooseFunction1.currentText()
-            #print "You have selected %s " %self.chooseFunction2.currentText()
             self.chooseFunction3.setVisible(False)
             dropdown3_open = False
 
 
     # want to display dropdown menus depending on the choice
     def chooseFunction(self):
-        #print
+        global start_time # for testing
 
         #declares the options for corresponding index
         ERROR = -1
@@ -728,13 +732,19 @@ class Ui_MainWindow(object):
                     #call function and display output
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
-                        print("Reducing network - this may take some time!")
-                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
-                        self.myThread.start()
+                        print("Reducing network")
+                        #self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
+                        start_time = time.time()
+                        #self.myThread.start()
+                        print(getattr(model, function1)())
+                        print(time.time() - start_time)
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
-                        print("Finding synthetic lethal pairs - this may take some time!")
-                        self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
-                        self.myThread.start()
+                        print("Finding synthetic lethal pairs")
+                        #self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                        start_time = time.time()
+                        print(getattr(model, function1)())
+                        #self.myThread.start()
+                        print(time.time() - start_time)
                     else:
                         print(getattr(model, function1)())
 
