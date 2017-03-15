@@ -9,10 +9,15 @@ from decimal import Decimal
 from math import gcd
 from fractions import Fraction
 from Utilities import *
+#from multiprocessing import Process, Queue
+import multiprocessing
+#import queue
+#from multiprocessing import Pool # threading
+#from multiprocessing.dummy import Pool as ThreadPool # threading
 
 zero, one = Fraction(0), Fraction(1)
 
-# ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
+#ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
 ESOLVER_PATH = "/Users/Admin/Downloads/DownloadedSoftware/qsopt-ex/build/esolver/.libs/esolver"
 
 def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
@@ -706,6 +711,30 @@ def findDistance(N, special, Irrev, norm = 'inf'):
             redVec[x] = vec[x]
     return val, redVec
 
+####parallelization
+def parallelizedNegFindFeasible(N, Irrev, pos  ,index, option,subList,out_q_neg):
+    #subOnlyNeg = []
+    count = len(subList) * index
+    outdict = {}
+    for ind, react in enumerate(subList): # changed from subOnlyNeg to subList!
+        (val1, vec1) = findFeasible(N, react, Irrev, pos, ('sub+' + str(index) + 'V' + str(ind) + 'sets.lp'), option=option)
+        if (type(val1) == type([]) and len(val1) == 0):  # infeasible
+            outdict[count+ind] = react #puts infeasible reactions into dictionary
+    out_q_neg.put(outdict) #places dictionary into queue asynchronously
+
+def parallelizedPosFindFeasible(N, Irrev, pos  ,index, option,subList,out_q_pos):
+    #subOnlyPos = []
+    outdict = {}
+    count = len(subList) * index
+    for ind, react in enumerate(subList):# changed from subOnlyPos to subList!
+        (val0, vec0) = findFeasible(N, react, Irrev, pos, ('sub-' + str(index) + 'V' + str(ind) + 'sets.lp'), option=option)
+        if (type(val0) == type([]) and len(vec0) == 0):  # infeasible
+            outdict[count+ind] = react #puts infeasible reactions into dictionary
+    out_q_pos.put(outdict) #places dictionary into queue asynchronously
+    
+
+##end functions for parallelization
+
 def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0):
     # This function finds all unidirectional (effectively irreversible) reactions.
     # NOTE: It assumes that all the reactions in the network can have nonzero flux;
@@ -719,18 +748,35 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
     canBeNegative = findTBlocked(N, allRev, basename = 'canBeNegative.lp', restricted = False, option = option, rev = True, negated = True)
     onlyPosCandidates = [i for i in allRev if i not in canBeNegative]
     onlyNegCandidates = [i for i in allRev if i not in canBePositive]
+    parallel = 6 #testing
+    
     if len(onlyNegCandidates) <= 1:
         onlyNeg = onlyNegCandidates
     else:
-        if parallel: # this is to be distributed between the threads
+        if parallel>0: # this is to be distributed between the threads
             splitNegPairs = [onlyNegCandidates[i::parallel] for i in range(parallel)]
+            # Each process will get  a queue to put its outdict into
+            out_q_neg = multiprocessing.Queue()
+            procs = []
             for index, subList in enumerate(splitNegPairs):
-                subOnlyNeg = []
-                for ind, react in enumerate(subOnlyNeg):
-                    (val1, vec1) = findFeasible(N, react, Irrev, True, 'sub+' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
-                    if (type(val1) == type([]) and len(val1) == 0):  # infeasible
-                        subOnlyNeg.append(react)
-                onlyNeg += subOnlyNeg
+                p = multiprocessing.Process(
+                        target=parallelizedNegFindFeasible,
+                        args=(N, Irrev, True, index, option,subList,out_q_neg))
+                procs.append(p)
+                p.daemon = True
+                p.start()
+
+            # Collect all results into a single result dict. We know how many dicts
+            # with results to expect.
+            resultdict = {}
+            for i in range(parallel):
+                resultdict.update(out_q_neg.get())
+
+            # Wait for all worker processes to finish
+            for p in procs:
+                p.join()
+            onlyNeg = list(resultdict.values())
+            
         else:
             for ind, react in enumerate(onlyNegCandidates):
                 (val1, vec1) = findFeasible(N, react, Irrev, True,  'sub+' + str(ind) + 'sets.lp', option = option)
@@ -740,15 +786,31 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
     if len(onlyPosCandidates) <= 1:
         onlyPos = onlyPosCandidates
     else:
-        if parallel: # this is to be distributed between the threads
+        if parallel>0: # this is to be distributed between the threads
             splitPosPairs = [onlyPosCandidates[i::parallel] for i in range(parallel)]
+
+            # Each process will get queue to put its out dict into
+            out_q_pos = multiprocessing.Queue()
+            procs = []
             for index, subList in enumerate(splitPosPairs):
-                subOnlyPos = []
-                for ind, react in enumerate(subOnlyPos):
-                    (val0, vec0) = findFeasible(N, react, Irrev, False, 'sub-' + str(index) + 'V' + str(ind) + 'sets.lp', option=option)
-                    if (type(val0) == type([]) and len(val0) == 0):  # infeasible
-                        subOnlyPos.append(react)
-                onlyPos += subOnlyPos
+                p = multiprocessing.Process(
+                        target=parallelizedPosFindFeasible,
+                        args=(N, Irrev, False, index,option, subList,out_q_pos))
+                procs.append(p)
+                p.daemon = True
+                p.start()
+
+            # Collect all results into a single result dict. We know how many dicts
+            # with results to expect.
+            resultdict = {}
+            for i in range(parallel):
+                resultdict.update(out_q_pos.get())
+
+            # Wait for all worker processes to finish
+            for p in procs:
+                p.join()
+            onlyPos = list(resultdict.values())
+ 
         else:
             for ind, react in enumerate(onlyPosCandidates):
                 (val0, vec0) = findFeasible(N, react, Irrev, False,  'sub-' + str(ind) + 'sets.lp', option = option)
@@ -756,6 +818,7 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
                     onlyPos.append(react)
     if verbose:
         print('This required ' + str(len(onlyNegCandidates) + len(onlyPosCandidates)) + ' linear programs')
+    
     return (onlyPos, onlyNeg)
 
 def processUnidirectional(N, irrev, option = 'null'):
@@ -1430,6 +1493,24 @@ def findSmallCutsets(Network, Target, skip = [], Kmax = 3):
                 PairsT = sum(PairsT, [])
                 Subsets[2] += sum([[sorted([cur,x,y]) for x in pair for y in pair if x != y] for pair in PairsT],[])
     return Subsets
+####parallelization
+def parallelizedTestCutSet(Network, Target,  rec, I,subList,index,out_q_lethal,out_q_iter):
+    Filename = 'lethal.lp'
+    count = len(subList) * index
+    outdict_lethal = {}
+    outdict_iter = {}
+    subIter = 0
+    for ind, pair in enumerate(subList):
+        if testCutSet(pair, Network, Target, (Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:]), rec, I):
+            outdict_lethal[count+ind] = pair #place pair into dictionary
+        subIter += 1
+
+    #place items into dictionary then into queue
+    outdict_iter[index] = subIter
+    out_q_lethal.put(outdict_lethal)
+    out_q_iter.put(outdict_iter)
+    #return tempLethal, tempIter
+###end parallelization
 
 def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I = [], verbose = False, parallel = 0):
     # This function identifies all essential and synthetic lethal pairs in a given
@@ -1463,17 +1544,38 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     CandidatePairs = [[x,y] for x in allCandidates for y in allCandidates if x < y]
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
+    parallel = 6 # testing
     if parallel > 0:
+        CandidatePairs = [pair for pair in CandidatePairs if all([(pair[0] in z or pair[1] in z) for z in Collection])]
         splitPairs = [CandidatePairs[i::parallel] for i in range(parallel)]
-        for index, subList in enumerate(splitPairs): # each of those should eventually go into a separate thread!
-            subLethal, subIter = [], 0
-            for ind, pair in enumerate(subList):
-                if all([(pair[0] in z or pair[1] in z) for z in Collection]):
-                    if testCutSet(pair, Network, Target, Filename[:-3] + str(index) + 'V' + str(ind) + Filename[-3:], rec, I):
-                        subLethal.append(pair)
-                    subIter += 1
-            Lethal += subLethal
-            Iter += subIter
+
+        out_q_lethal = multiprocessing.Queue()
+        out_q_iter = multiprocessing.Queue()
+        procs = []
+        for index, subList in enumerate(splitPairs):
+            p = multiprocessing.Process(
+                    target=parallelizedTestCutSet,
+                    args=(Network, Target, rec, I,subList,index,out_q_lethal,out_q_iter ))
+            procs.append(p)
+            p.daemon = True
+            p.start()
+
+        # Collect all results into a single result dict. We know how many dicts
+        # with results to expect.
+        resultdict_lethal = {}
+        for i in range(parallel):
+            resultdict_lethal.update(out_q_lethal.get())
+
+        resultdict_iter = {}
+        for i in range(parallel):
+            resultdict_iter.update(out_q_iter.get())
+
+        # Wait for all worker processes to finish
+        for p in procs:
+            p.join()
+        Lethal = list(resultdict_lethal.values())
+        Iter += sum(resultdict_iter.values())
+
     else:
         for ind, pair in enumerate(CandidatePairs):
             if verbose and (ind + 1) % 1000 == 0:
@@ -1484,6 +1586,11 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
                 Iter += 1
     if verbose:
         print(("This required a total of " + str(Iter) + " linear programs"))
+    '''
+    if(parallel>0):
+        pool.close()
+        pool.join()
+    '''
     return (Essential, Lethal)
 
 def testSubsets(Network, Target, fluxes = [], Kmax = 3, Filename = 'trial.lp', rec = True, I = [], startInd = 0, startSubsets = []):
