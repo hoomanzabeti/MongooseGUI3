@@ -107,10 +107,10 @@ class WorkerThread(QThread):
     def run(self):
         if(self.index_name == self.reduceNetwork):
             print(getattr(self.model_name, self.function_name)())
-            print(time.time() - start_time)
+            #print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
             print(getattr(self.model_name, self.function_name)(0))
-            print(time.time() - start_time)
+            #print(time.time() - start_time)
         else:
             print("Thread could not find work")
             print("indexes name: %s" %(self.index_name))
@@ -735,7 +735,7 @@ class Ui_MainWindow(object):
                     if(index1 == REDUCE_NETWORK):
                         print("Reducing network")
                         self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
-                        start_time = time.time()
+                        #start_time = time.time()
                         self.myThread.start()
                         #print(getattr(model, function1)())
                         #print(time.time() - start_time)
@@ -744,9 +744,9 @@ class Ui_MainWindow(object):
                         if numProc:
                             print("Finding synthetic lethal pairs")
                             numProc = int( numProc )
-                            start_time = time.time()
+                            #start_time = time.time()
                             print(getattr(model, function1)(numProc))
-                            print(time.time() - start_time)
+                            #print(time.time() - start_time)
                         elif(numProc == 0):
                             print("Finding synthetic lethal pairs")
                             self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
