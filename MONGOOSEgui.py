@@ -109,7 +109,7 @@ class WorkerThread(QThread):
             print(getattr(self.model_name, self.function_name)())
             print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
-            print(getattr(self.model_name, self.function_name)())
+            print(getattr(self.model_name, self.function_name)(0))
             print(time.time() - start_time)
         else:
             print("Thread could not find work")
@@ -261,6 +261,7 @@ class Ui_MainWindow(object):
         self.chooseParallel.setObjectName(_fromUtf8("chooseIndex"))
         self.chooseParallel.setPlaceholderText('threads')
         self.chooseParallel.setVisible(False)
+        self.chooseParallel.setToolTip(_translate("MainWindow", "<html><head/><body><p>Choose the number of threads</p></body></html>", None))
 
         # intializes third dropdown menu, chooses a function
         self.chooseFunction3 = QtGui.QComboBox(self.centralwidget)
@@ -537,7 +538,7 @@ class Ui_MainWindow(object):
             if(index == PRINT_RXN_FORMULA or index==DELETE_RXN or index==DELETE_METAB):
                 self.chooseIndex.setVisible(True)
                 self.chooseParallel.setVisible(False)
-            elif(index == REDUCE_NETWORK or index == FIND_SYNTH_LETH_PAIRS):
+            elif(index == FIND_SYNTH_LETH_PAIRS):
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(True)
             elif(index == ADD_RXN or index == ADD_METAB):
@@ -733,18 +734,28 @@ class Ui_MainWindow(object):
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
                         print("Reducing network")
-                        #self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
+                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
                         start_time = time.time()
-                        #self.myThread.start()
-                        print(getattr(model, function1)())
-                        print(time.time() - start_time)
+                        self.myThread.start()
+                        #print(getattr(model, function1)())
+                        #print(time.time() - start_time)
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
-                        print("Finding synthetic lethal pairs")
-                        #self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
-                        start_time = time.time()
-                        print(getattr(model, function1)())
-                        #self.myThread.start()
-                        print(time.time() - start_time)
+                        numProc = self.chooseParallel.text()
+                        if numProc:
+                            print("Finding synthetic lethal pairs")
+                            numProc = int( numProc )
+                            start_time = time.time()
+                            print(getattr(model, function1)(numProc))
+                            print(time.time() - start_time)
+                        elif(numProc == 0):
+                            print("Finding synthetic lethal pairs")
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                            self.myThread.start()
+                        else:
+                            numProc = 0
+                            print("Finding synthetic lethal pairs")
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                            self.myThread.start()
                     else:
                         print(getattr(model, function1)())
 

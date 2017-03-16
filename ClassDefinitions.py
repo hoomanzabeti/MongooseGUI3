@@ -241,13 +241,13 @@ class Network:
                 print(('There are ' + str(numBasicEssential - 1) + ' essential reactions in a subset with the growth reaction.'))
                 print('Returning the remaining essential reactions')
                 return sorted(EssentialFull)
-    def findSyntheticLethalPairs(self):
+    def findSyntheticLethalPairs(self,parallel=0):
         if self.checkReduced():
             Network = self.reducedMatrix
             Target = self.findBiomassReactionReduced()
             if Target is not None:
                 Irr = [i for i, subset in enumerate(self.reactionSubsets) if not subset.reversible]
-                Essential, Lethal = findEssentialLethal(Network, Target, rec = False, I = Irr, verbose = True)
+                Essential, Lethal = findEssentialLethal(Network, Target, rec = False, I = Irr, verbose = True,parallel=parallel)
                 allPairs = []
                 for item in Lethal:
                     first, second = item[0], item[1]

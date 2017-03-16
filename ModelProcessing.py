@@ -9,11 +9,7 @@ from decimal import Decimal
 from math import gcd
 from fractions import Fraction
 from Utilities import *
-#from multiprocessing import Process, Queue
 import multiprocessing
-#import queue
-#from multiprocessing import Pool # threading
-#from multiprocessing.dummy import Pool as ThreadPool # threading
 
 zero, one = Fraction(0), Fraction(1)
 
@@ -713,7 +709,6 @@ def findDistance(N, special, Irrev, norm = 'inf'):
 
 ####parallelization
 def parallelizedNegFindFeasible(N, Irrev, pos  ,index, option,subList,out_q_neg):
-    #subOnlyNeg = []
     count = len(subList) * index
     outdict = {}
     for ind, react in enumerate(subList): # changed from subOnlyNeg to subList!
@@ -723,7 +718,6 @@ def parallelizedNegFindFeasible(N, Irrev, pos  ,index, option,subList,out_q_neg)
     out_q_neg.put(outdict) #places dictionary into queue asynchronously
 
 def parallelizedPosFindFeasible(N, Irrev, pos  ,index, option,subList,out_q_pos):
-    #subOnlyPos = []
     outdict = {}
     count = len(subList) * index
     for ind, react in enumerate(subList):# changed from subOnlyPos to subList!
@@ -748,7 +742,7 @@ def findUnidirectional(N, Irrev, option = 'null', verbose = False, parallel = 0)
     canBeNegative = findTBlocked(N, allRev, basename = 'canBeNegative.lp', restricted = False, option = option, rev = True, negated = True)
     onlyPosCandidates = [i for i in allRev if i not in canBeNegative]
     onlyNegCandidates = [i for i in allRev if i not in canBePositive]
-    parallel = 6 #testing
+    parallel = 0 #testing
     
     if len(onlyNegCandidates) <= 1:
         onlyNeg = onlyNegCandidates
@@ -1544,7 +1538,7 @@ def findEssentialLethal(Network, Target, Filename = 'lethal.lp', rec = True, I =
     CandidatePairs = [[x,y] for x in allCandidates for y in allCandidates if x < y]
     if verbose:
         print(('There are ' + str(len(CandidatePairs)) + ' pairs to be processed'))
-    parallel = 6 # testing
+    #parallel = 6 # testing
     if parallel > 0:
         CandidatePairs = [pair for pair in CandidatePairs if all([(pair[0] in z or pair[1] in z) for z in Collection])]
         splitPairs = [CandidatePairs[i::parallel] for i in range(parallel)]
