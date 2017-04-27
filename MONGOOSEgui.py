@@ -254,6 +254,7 @@ class Ui_MainWindow(object):
         self.chooseIndex.setObjectName(_fromUtf8("chooseIndex"))
         self.chooseIndex.setPlaceholderText('[index]')
         self.chooseIndex.setVisible(False)
+        self.chooseIndex.textChanged.connect(self.indexParam)
 
         # intializes parallel input
         self.chooseParallel = QtGui.QLineEdit(self.centralwidget)
@@ -270,10 +271,12 @@ class Ui_MainWindow(object):
         self.chooseFunction3.addItem(_fromUtf8(""))
         self.chooseFunction3.addItem(_fromUtf8(""))
         self.chooseFunction3.setVisible(False)
+        self.chooseFunction3.currentIndexChanged.connect(self.hide3)
 
         # calls MONGOOSE functions
         self.executeAction.clicked.connect(self.chooseFunction)
 
+        #reaction name inputs
         self.rxnParam1 = QtGui.QLineEdit(self.centralwidget)
         self.rxnParam1.setGeometry(QtCore.QRect(20, 240, 190, 25))
         self.rxnParam1.setObjectName(_fromUtf8("rxnParam1"))
@@ -283,7 +286,9 @@ class Ui_MainWindow(object):
         self.rxnParam1.setPlaceholderText('Reaction Name')
         self.rxnParam1.setVisible(False)
         self.label1.setVisible(False)
+        self.rxnParam1.textChanged.connect(self.rxnParam1_onoff)
 
+        #reaction number inputs
         self.rxnParam2 = QtGui.QLineEdit(self.centralwidget)
         self.rxnParam2.setGeometry(QtCore.QRect(20, 270, 190, 25))
         self.rxnParam2.setObjectName(_fromUtf8("rxnParam2"))
@@ -293,6 +298,7 @@ class Ui_MainWindow(object):
         self.rxnParam2.setPlaceholderText('List Of Pairs')
         self.rxnParam2.setVisible(False)
         self.label2.setVisible(False)
+        self.rxnParam2.textChanged.connect(self.rxnParam2_onoff)
 
         # intializes central widget
         MainWindow.setCentralWidget(self.centralwidget)
@@ -319,7 +325,7 @@ class Ui_MainWindow(object):
         self.chooseFunction2.setItemText(6, _translate("MainWindow", "species", None))
         self.chooseFunction2.setItemText(7, _translate("MainWindow", "external", None))
         self.chooseFunction1.setToolTip(_translate("MainWindow", "<html><head/><body><p>If the desired function requires an [index] parameter, please specify what index you would like to analyze.</p></body></html>", None))
-        self.chooseFunction1.setItemText(0, _translate("MainWindow", "<Choose>", None))
+        self.chooseFunction1.setItemText(0, _translate("MainWindow", "Choose", None))
         self.chooseFunction1.setItemText(1, _translate("MainWindow", "reduceNetwork", None))
         self.chooseFunction1.setItemText(2, _translate("MainWindow", "addReaction", None))#name and list of pairs
         self.chooseFunction1.setItemText(3, _translate("MainWindow", "deleteReactions", None))
@@ -340,7 +346,7 @@ class Ui_MainWindow(object):
         self.chooseFunction1.setItemText(18, _translate("MainWindow", "findEssentialReactions", None))# new
         self.chooseFunction1.setItemText(19, _translate("MainWindow", "findSyntheticLethalPairs", None))# new
         self.chooseFunction1.setItemText(20, _translate("MainWindow", "findMinimalMedia", None))# new
-        self.chooseFunction3.setItemText(0, _translate("MainWindow", "<Choose>", None))
+        self.chooseFunction3.setItemText(0, _translate("MainWindow", "Choose", None))
         self.chooseFunction3.setItemText(1, _translate("MainWindow", "name", None))
         self.label1.setText(_translate("MainWindow", "Name", None))
         self.label2.setText(_translate("MainWindow", "Pairs", None))
@@ -433,7 +439,47 @@ class Ui_MainWindow(object):
         else:
             pass
 
+    #controls enable/disable of execute actions button based on reaction name input
+    def rxnParam1_onoff(self):
+        rxnName = self.rxnParam1.text()
+        listRxn = self.rxnParam2.text()
+        if(rxnName != "" and listRxn != ""):
+            self.executeAction.setEnabled(True)
+        else:
+            self.executeAction.setEnabled(False)
+    
+    #controls enable/disable of execute actions button based on list of reactions input
+    def rxnParam2_onoff(self):
+        rxnName = self.rxnParam1.text()
+        listRxn = self.rxnParam2.text()
+        if(rxnName != "" and listRxn != ""):
+            self.executeAction.setEnabled(True)
+        else:
+            self.executeAction.setEnabled(False)
 
+    #controls enable/disable of execute actions button based on index input
+    def indexParam(self):
+        param1 = self.chooseIndex.text()
+        index2 = self.chooseFunction2.findText(self.chooseFunction2.currentText())
+        index3 = self.chooseFunction3.findText(self.chooseFunction3.currentText())
+        CHOOSE = 0
+        SPECIES = 6
+        if(param1 == ""):
+            self.executeAction.setEnabled(False)
+        else:
+            if(self.chooseFunction2.isVisible() == True):
+                if(index2 == CHOOSE):
+                    self.executeAction.setEnabled(False)
+                else:
+                    if( index2 == SPECIES):
+                        if ( index3 == CHOOSE):
+                            self.executeAction.setEnabled(False)
+                        else: 
+                            self.executeAction.setEnabled(True)
+                    else:
+                        self.executeAction.setEnabled(True)
+            else:
+                self.executeAction.setEnabled(True)
 
     # controls visibility of dropdown menus based on user input
     def hide1(self):
@@ -495,7 +541,6 @@ class Ui_MainWindow(object):
                 and index!=DELETE_METAB and index!=ADD_METAB and index!=CHECK_ELEM_BAL and index!=FIND_TOP_BLK_METAB
                  and index!=FIND_TOP_BLK_RXN and index!=FIND_STOICH_BLK_RXN and index!=FIND_IRREV_BLK_RXN and index!=FIND_SEMI_BLK_RXN
                   and index!=UNBLK_BIOM_RXN and index!=FIND_ESS_RXN and index!=FIND_SYNTH_LETH_PAIRS and index!=FIND_MIN_MED):
-              #print(index)
               self.chooseFunction2.setVisible(True)
               self.rxnParam1.setVisible(False)
               self.rxnParam2.setVisible(False)
@@ -503,6 +548,7 @@ class Ui_MainWindow(object):
               #enables which options from dropdown menu are selectable
               if(index == REACTIONS):
                   self.chooseIndex.setVisible(True)
+                  self.executeAction.setEnabled(False)
                   self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(True)
@@ -514,6 +560,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == REACTION_SUBSETS):
                   self.chooseIndex.setVisible(True)
+                  self.executeAction.setEnabled(False)
                   self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
@@ -525,6 +572,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
               if(index == METABOLITES):
                   self.chooseIndex.setVisible(True)
+                  self.executeAction.setEnabled(False)
                   self.chooseParallel.setVisible(False)
                   self.chooseFunction2.setCurrentIndex(CHOOSE)
                   self.chooseFunction2.model().item(NAME).setEnabled(False)
@@ -538,7 +586,13 @@ class Ui_MainWindow(object):
             if(index == PRINT_RXN_FORMULA or index==DELETE_RXN or index==DELETE_METAB):
                 self.chooseIndex.setVisible(True)
                 self.chooseParallel.setVisible(False)
+                indexInput = self.chooseIndex.text()
+                if(indexInput != ""):  # enable/disable execute action
+                    self.executeAction.setEnabled(True)
+                else:
+                    self.executeAction.setEnabled(False)
             elif(index == FIND_SYNTH_LETH_PAIRS):
+                self.executeAction.setEnabled(True)
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(True)
             elif(index == ADD_RXN or index == ADD_METAB):
@@ -546,11 +600,18 @@ class Ui_MainWindow(object):
                 self.rxnParam2.setVisible(True)
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(False)
+                rxnName = self.rxnParam1.text()
+                listRxn = self.rxnParam2.text()
+                if(rxnName != "" and listRxn != ""): # enable/disable execute action
+                    self.executeAction.setEnabled(True)
+                else:
+                    self.executeAction.setEnabled(False)
 
             else:
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(False)
-
+                self.executeAction.setEnabled(True)
+            
             self.chooseFunction2.setVisible(False)
             self.chooseFunction3.setVisible(False)
             dropdown2_open = False
@@ -567,6 +628,63 @@ class Ui_MainWindow(object):
 
         index1 = self.chooseFunction1.findText(self.chooseFunction1.currentText())
         index2 = self.chooseFunction2.findText(self.chooseFunction2.currentText())
+        param1 = self.chooseIndex.text()
+
+        ERROR = -1
+        CHOOSE = 0
+
+        REDUCE_NETWORK = 1
+        ADD_RXN = 2
+        DELETE_RXN = 3
+        FIND_BIOMASS_RXN = 4
+        REACTIONS = 5
+        REACTION_SUBSETS = 6
+        METABOLITES = 7
+        PRINT_RXN_FORMULA = 8
+        DELETE_METAB = 9
+        ADD_METAB = 10
+
+        NAME = 1
+        PAIRS = 2
+        REDUCTION_STATUS = 3
+        REVERSIBLE = 4
+        LENGTH = 5
+        SPECIES = 6
+        EXTERNAL = 7
+        
+        if ( index1 == METABOLITES and index2 == SPECIES):
+            #self.executeAction.setEnabled(False)
+            if(param1 == ""):
+                self.executeAction.setEnabled(False)
+            else:
+                self.executeAction.setEnabled(True)
+            self.chooseFunction3.setVisible(True)
+            dropdown3_open = True
+        else:
+            if(index2 != CHOOSE):
+                self.executeAction.setEnabled(True)
+                if(param1 == ""):
+                    self.executeAction.setEnabled(False)
+                else:
+                    self.executeAction.setEnabled(True)
+            else:
+                self.executeAction.setEnabled(False)
+            self.chooseFunction3.setVisible(False)
+            dropdown3_open = False
+
+
+    def hide3(self):
+        global dropdown1_open
+        dropdown1_open = True
+        global dropdown2_open
+        dropdown2_open = True
+        global dropdown3_open
+        dropdown3_open = True
+
+        index1 = self.chooseFunction1.findText(self.chooseFunction1.currentText())
+        index2 = self.chooseFunction2.findText(self.chooseFunction2.currentText())
+        index3 = self.chooseFunction3.findText(self.chooseFunction3.currentText())
+        param1 = self.chooseIndex.text()
 
         ERROR = -1
         CHOOSE = 0
@@ -590,12 +708,13 @@ class Ui_MainWindow(object):
         SPECIES = 6
         EXTERNAL = 7
 
-        if ( index1 == METABOLITES and index2 == SPECIES):
-            self.chooseFunction3.setVisible(True)
-            dropdown3_open = True
+        if(index3 == CHOOSE):
+            self.executeAction.setEnabled(False)
         else:
-            self.chooseFunction3.setVisible(False)
-            dropdown3_open = False
+            if(param1 == ""):
+                self.executeAction.setEnabled(False)
+            else:
+                self.executeAction.setEnabled(True)
 
 
     # want to display dropdown menus depending on the choice
@@ -733,10 +852,12 @@ class Ui_MainWindow(object):
                     #call function and display output
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
+                        self.executeAction.setEnabled(False)
                         print("Reducing network")
                         self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
                         #start_time = time.time()
                         self.myThread.start()
+                        self.executeAction.setEnabled(True)
                         #print(getattr(model, function1)())
                         #print(time.time() - start_time)
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
