@@ -92,13 +92,16 @@ class XStream(QtCore.QObject):
 # provided multi threading capabilities
 class WorkerThread(QThread):
 
-    def __init__(self,model_name, function_name, index_name):
+    def __init__(self,model_name, function_name, index_name, additional_name, list):
         QThread.__init__(self)
         self.model_name = model_name
         self.function_name = function_name
         self.index_name = index_name
         self.reduceNetwork = 1
         self.findSyntheticLethalPairs = 19
+        self.addRxn = 2
+        self.list = list
+        self.additional_name = additional_name
 
     def __del__(self):
         self.wait()
@@ -111,6 +114,9 @@ class WorkerThread(QThread):
         elif(self.index_name == self.findSyntheticLethalPairs):
             print(getattr(self.model_name, self.function_name)(0))
             #print(time.time() - start_time)
+        elif(self.index_name == self.addRxn):
+            print(">>> model.%s('%s',%s)" % (self.function_name,self.additional_name,self.list))
+            print(getattr(self.model_name, self.function_name)(self.additional_name, self.list))
         else:
             print("Thread could not find work")
             print("indexes name: %s" %(self.index_name))
@@ -558,6 +564,8 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(LENGTH).setEnabled(False)
                   self.chooseFunction2.model().item(SPECIES).setEnabled(False)
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
+                  chooseIndexPlaceholderText = "0 - " + str(len(model.reactions) - 1)
+                  self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
               if(index == REACTION_SUBSETS):
                   self.chooseIndex.setVisible(True)
                   self.executeAction.setEnabled(False)
@@ -570,6 +578,8 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(LENGTH).setEnabled(True)
                   self.chooseFunction2.model().item(SPECIES).setEnabled(False)
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
+                  chooseIndexPlaceholderText = "0 - " + str(len(model.reactions) - 1)
+                  self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
               if(index == METABOLITES):
                   self.chooseIndex.setVisible(True)
                   self.executeAction.setEnabled(False)
@@ -582,11 +592,19 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(LENGTH).setEnabled(False)
                   self.chooseFunction2.model().item(SPECIES).setEnabled(True)
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(True)
+                  chooseIndexPlaceholderText = "0 - " + str(len(model.metabolites) - 1)
+                  self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
           else:
             if(index == PRINT_RXN_FORMULA or index==DELETE_RXN or index==DELETE_METAB):
                 self.chooseIndex.setVisible(True)
                 self.chooseParallel.setVisible(False)
                 indexInput = self.chooseIndex.text()
+                if(index == DELETE_METAB):
+                    chooseIndexPlaceholderText = "0 - " + str(len(model.metabolites) - 1)
+                    self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
+                else:
+                    chooseIndexPlaceholderText = "0 - " + str(len(model.reactions) - 1)
+                    self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
                 if(indexInput != ""):  # enable/disable execute action
                     self.executeAction.setEnabled(True)
                 else:
@@ -799,7 +817,7 @@ class Ui_MainWindow(object):
                         param1 = int ( str( param1 ) )
                     else:
                         print("Choose an index")
-
+                    
                     if( index1 != PRINT_RXN_FORMULA):
                         #call function and display output
                         print(">>> model.%s(%d)" % (function1, param1))
@@ -821,8 +839,11 @@ class Ui_MainWindow(object):
                         count = count + 1
                     else:
                         list = [[Fraction(el) for el in addReactionPairs.split(',')]]
-                    print(">>> model.%s('%s',%s)" % (function1,addReactionName,list))
-                    print(getattr(model, function1)(addReactionName, list))
+
+                    self.myThread = WorkerThread(model,function1, ADD_RXN, addReactionName, list)
+                    self.myThread.start()
+                    #print(">>> model.%s('%s',%s)" % (function1,addReactionName,list))
+                    #print(getattr(model, function1)(addReactionName, list))
 
                 elif(index1 == ADD_METAB):
                     function1 = str(self.chooseFunction1.currentText())
