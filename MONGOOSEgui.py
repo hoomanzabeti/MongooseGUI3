@@ -92,16 +92,18 @@ class XStream(QtCore.QObject):
 # provided multi threading capabilities
 class WorkerThread(QThread):
 
-    def __init__(self,model_name, function_name, index_name, additional_name, list):
+    def __init__(self,model_name, function_name,  index_name ,execute_action, additional_name = "", list = []):
         QThread.__init__(self)
         self.model_name = model_name
         self.function_name = function_name
         self.index_name = index_name
         self.reduceNetwork = 1
         self.findSyntheticLethalPairs = 19
+        self.findEssRxn = 18
         self.addRxn = 2
         self.list = list
         self.additional_name = additional_name
+        self.execute_action = execute_action
 
     def __del__(self):
         self.wait()
@@ -109,14 +111,25 @@ class WorkerThread(QThread):
 
     def run(self):
         if(self.index_name == self.reduceNetwork):
+            self.execute_action.setEnabled(False)
             print(getattr(self.model_name, self.function_name)())
+            self.execute_action.setEnabled(True)
+            
             #print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
+            self.execute_action.setEnabled(False)
             print(getattr(self.model_name, self.function_name)(0))
+            self.execute_action.setEnabled(True)
             #print(time.time() - start_time)
+        elif(self.index_name == self.findEssRxn):
+            self.execute_action.setEnabled(False)
+            print(getattr(self.model_name, self.function_name)())
+            self.execute_action.setEnabled(True)
         elif(self.index_name == self.addRxn):
+            self.execute_action.setEnabled(False)
             print(">>> model.%s('%s',%s)" % (self.function_name,self.additional_name,self.list))
             print(getattr(self.model_name, self.function_name)(self.additional_name, self.list))
+            self.execute_action.setEnabled(True)
         else:
             print("Thread could not find work")
             print("indexes name: %s" %(self.index_name))
@@ -298,13 +311,13 @@ class Ui_MainWindow(object):
         self.rxnParam2 = QtGui.QLineEdit(self.centralwidget)
         self.rxnParam2.setGeometry(QtCore.QRect(20, 270, 190, 25))
         self.rxnParam2.setObjectName(_fromUtf8("rxnParam2"))
+        self.rxnParam2.setPlaceholderText('List Of Pairs')
+        self.rxnParam2.setVisible(False)
+        self.rxnParam2.textChanged.connect(self.rxnParam2_onoff)
         self.label2 = QtGui.QLabel(self.centralwidget)
         self.label2.setGeometry(QtCore.QRect(30, 275, 56, 13))
         self.label2.setObjectName(_fromUtf8("label2"))
-        self.rxnParam2.setPlaceholderText('List Of Pairs')
-        self.rxnParam2.setVisible(False)
         self.label2.setVisible(False)
-        self.rxnParam2.textChanged.connect(self.rxnParam2_onoff)
 
         # intializes central widget
         MainWindow.setCentralWidget(self.centralwidget)
@@ -840,7 +853,7 @@ class Ui_MainWindow(object):
                     else:
                         list = [[Fraction(el) for el in addReactionPairs.split(',')]]
 
-                    self.myThread = WorkerThread(model,function1, ADD_RXN, addReactionName, list)
+                    self.myThread = WorkerThread(model,function1, ADD_RXN,self.executeAction, addReactionName, list)
                     self.myThread.start()
                     #print(">>> model.%s('%s',%s)" % (function1,addReactionName,list))
                     #print(getattr(model, function1)(addReactionName, list))
@@ -873,14 +886,17 @@ class Ui_MainWindow(object):
                     #call function and display output
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
-                        self.executeAction.setEnabled(False)
+                        #self.executeAction.setEnabled(False)
                         print("Reducing network")
-                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK)
+                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK, self.executeAction)
                         #start_time = time.time()
                         self.myThread.start()
-                        self.executeAction.setEnabled(True)
+                        #self.executeAction.setEnabled(True)
                         #print(getattr(model, function1)())
                         #print(time.time() - start_time)
+                    elif(index1 == FIND_ESS_RXN):
+                        self.myThread = WorkerThread(model,function1, FIND_ESS_RXN, self.executeAction)
+                        self.myThread.start()
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
                         numProc = self.chooseParallel.text()
                         if numProc:
@@ -891,12 +907,12 @@ class Ui_MainWindow(object):
                             #print(time.time() - start_time)
                         elif(numProc == 0):
                             print("Finding synthetic lethal pairs")
-                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction)
                             self.myThread.start()
                         else:
                             numProc = 0
                             print("Finding synthetic lethal pairs")
-                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS)
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction)
                             self.myThread.start()
                     else:
                         print(getattr(model, function1)())
