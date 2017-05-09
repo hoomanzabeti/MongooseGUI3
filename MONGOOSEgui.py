@@ -279,7 +279,7 @@ class Ui_MainWindow(object):
         self.chooseParallel = QtGui.QLineEdit(self.centralwidget)
         self.chooseParallel.setGeometry(QtCore.QRect(220, 140, 53, 45))
         self.chooseParallel.setObjectName(_fromUtf8("chooseIndex"))
-        self.chooseParallel.setPlaceholderText('threads')
+        #self.chooseParallel.setPlaceholderText('threads')
         self.chooseParallel.setVisible(False)
         self.chooseParallel.setToolTip(_translate("MainWindow", "<html><head/><body><p>Choose the number of threads</p></body></html>", None))
 
@@ -623,6 +623,8 @@ class Ui_MainWindow(object):
                 else:
                     self.executeAction.setEnabled(False)
             elif(index == FIND_SYNTH_LETH_PAIRS):
+                parallelInputText = "0 - " + str(multiprocessing.cpu_count())
+                self.chooseParallel.setPlaceholderText(parallelInputText)
                 self.executeAction.setEnabled(True)
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(True)
