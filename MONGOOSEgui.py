@@ -1,14 +1,8 @@
 '''
 Coding Standard:
 ----------------
--> lower/upper case for multi word variables
+-> lower/upper case for multi word variables or underscore seperated
 -> all upper case for constants
-
-
-Most Recent Changes:
---------------------
-
-1.Multi threading
 '''
 import os
 import sys
@@ -92,7 +86,8 @@ class XStream(QtCore.QObject):
 # provided multi threading capabilities
 class WorkerThread(QThread):
 
-    def __init__(self,model_name, function_name,  index_name ,execute_action, additional_name = "", list = []):
+    # thread init
+    def __init__(self,model_name, function_name,  index_name ,execute_action, additional_name = "", list = [], compartment_name = ""):
         QThread.__init__(self)
         self.model_name = model_name
         self.function_name = function_name
@@ -101,14 +96,19 @@ class WorkerThread(QThread):
         self.findSyntheticLethalPairs = 19
         self.findEssRxn = 18
         self.addRxn = 2
+        self.addMetab = 10
+        self.deleteRxn = 3
+        self.deleteMetab = 9
         self.list = list
         self.additional_name = additional_name
         self.execute_action = execute_action
+        self.compartment_name = compartment_name
 
+    # thread waits when deletes
     def __del__(self):
         self.wait()
 
-
+    # action thread runs
     def run(self):
         if(self.index_name == self.reduceNetwork):
             self.execute_action.setEnabled(False)
@@ -129,6 +129,21 @@ class WorkerThread(QThread):
             self.execute_action.setEnabled(False)
             print(">>> model.%s('%s',%s)" % (self.function_name,self.additional_name,self.list))
             print(getattr(self.model_name, self.function_name)(self.additional_name, self.list))
+            self.execute_action.setEnabled(True)
+        elif(self.index_name == self.addMetab):
+            self.execute_action.setEnabled(False)
+            print(">>> model.%s('%s',%s)" % (self.function_name,self.additional_name,self.compartment_name))
+            print(getattr(self.model_name, self.function_name)(self.additional_name, self.compartment_name))
+            self.execute_action.setEnabled(True)
+        elif(self.index_name == self.deleteRxn):
+            self.execute_action.setEnabled(False)
+            print(">>> model.%s(%s)" % (self.function_name,self.list))
+            print(getattr(model, self.function_name)(self.list))
+            self.execute_action.setEnabled(True)
+        elif(self.index_name == self.deleteMetab):
+            self.execute_action.setEnabled(False)
+            print(">>> model.%s(%s)" % (self.function_name,self.list))
+            print(getattr(model, self.function_name)(self.list))
             self.execute_action.setEnabled(True)
         else:
             print("Thread could not find work")
@@ -163,7 +178,7 @@ class Ui_MainWindow(object):
         self.resultOutput.verticalScrollBar().setValue(self.resultOutput.verticalScrollBar().maximum())
 
         XStream.stdout().messageWritten.connect( self.resultOutput.append ) #redirects print statements from terminal to gui
-        #XStream.stderr().messageWritten.connect( self.resultOutput.append ) #redirects errors from terminal to gui
+        XStream.stderr().messageWritten.connect( self.resultOutput.append ) #redirects errors from terminal to gui
         self.resultOutput.setTextInteractionFlags(QtCore.Qt.NoTextInteraction) #crucial line
 
         # intializes executeAction button
@@ -202,7 +217,6 @@ class Ui_MainWindow(object):
 
 
         # intializes first dropdown menu, which chooses the model
-        #self.chooseModel = QtGui.QTextEdit(self.centralwidget)
         self.chooseModel = QtGui.QLineEdit(self.centralwidget)
         self.chooseModel.setGeometry(QtCore.QRect(22, 95, 145, 33))
         self.chooseModel.setObjectName(_fromUtf8("chooseModel"))
@@ -235,13 +249,11 @@ class Ui_MainWindow(object):
         self.chooseFunction2.addItem(_fromUtf8(""))
         self.chooseFunction2.addItem(_fromUtf8(""))
         self.chooseFunction2.addItem(_fromUtf8(""))
-        self.chooseFunction2.addItem(_fromUtf8(""))
         self.chooseFunction2.setVisible(False)
         self.chooseFunction2.currentIndexChanged.connect(self.hide2)
 
         # intializes first dropdown menu, chooses a function
         self.chooseFunction1 = QtGui.QComboBox(self.centralwidget)
-        #self.chooseFunction1.setGeometry(QtCore.QRect(20, 137, 145, 50))
         self.chooseFunction1.setGeometry(QtCore.QRect(20, 137, 200, 50))
         self.chooseFunction1.setObjectName(_fromUtf8("chooseFunction1"))
         self.chooseFunction1.addItem(_fromUtf8(""))
@@ -324,7 +336,7 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-
+    # translates PyQT widgets to manipulatable objects
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
         self.executeAction.setText(_translate("MainWindow", "Execute Action", None))
@@ -340,9 +352,9 @@ class Ui_MainWindow(object):
         self.chooseFunction2.setItemText(2, _translate("MainWindow", "pairs", None))
         self.chooseFunction2.setItemText(3, _translate("MainWindow", "reductionStatus", None))
         self.chooseFunction2.setItemText(4, _translate("MainWindow", "reversible", None))
-        self.chooseFunction2.setItemText(5, _translate("MainWindow", "length", None))
-        self.chooseFunction2.setItemText(6, _translate("MainWindow", "species", None))
-        self.chooseFunction2.setItemText(7, _translate("MainWindow", "external", None))
+        #self.chooseFunction2.setItemText(5, _translate("MainWindow", "length", None))
+        self.chooseFunction2.setItemText(5, _translate("MainWindow", "species", None))
+        self.chooseFunction2.setItemText(6, _translate("MainWindow", "external", None))
         self.chooseFunction1.setToolTip(_translate("MainWindow", "<html><head/><body><p>If the desired function requires an [index] parameter, please specify what index you would like to analyze.</p></body></html>", None))
         self.chooseFunction1.setItemText(0, _translate("MainWindow", "Choose", None))
         self.chooseFunction1.setItemText(1, _translate("MainWindow", "reduceNetwork", None))
@@ -371,7 +383,7 @@ class Ui_MainWindow(object):
         self.label2.setText(_translate("MainWindow", "Pairs", None))
 
 
-
+    # allows users to select the model to be analyzed
     def select_model(self):
         global modelInput
         # checks valid input
@@ -450,6 +462,7 @@ class Ui_MainWindow(object):
         else:
             pass
 
+    # allows users to write output as an SBML file
     def write_sbml(self):
         choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Write SBML', 'Are you sure you want to write to SBML?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
         if choice == QtGui.QMessageBox.Yes:
@@ -482,7 +495,7 @@ class Ui_MainWindow(object):
         index2 = self.chooseFunction2.findText(self.chooseFunction2.currentText())
         index3 = self.chooseFunction3.findText(self.chooseFunction3.currentText())
         CHOOSE = 0
-        SPECIES = 6
+        SPECIES = 5
         if(param1 == ""):
             self.executeAction.setEnabled(False)
         else:
@@ -500,7 +513,7 @@ class Ui_MainWindow(object):
             else:
                 self.executeAction.setEnabled(True)
 
-    # controls visibility of dropdown menus based on user input
+    # controls visibility of dropdown menus, parameter inputs and enables/disables execution based on user input
     def hide1(self):
           #boolean variables to flag if dropdown menus are visible
           global dropdown1_open
@@ -546,8 +559,8 @@ class Ui_MainWindow(object):
           REDUCTION_STATUS = 3
           REVERSIBLE = 4
           LENGTH = 5
-          SPECIES = 6
-          EXTERNAL = 7
+          SPECIES = 5
+          EXTERNAL = 6
 
           if( index != METABOLITES or index2 != SPECIES):
               self.chooseFunction3.setVisible(False)
@@ -591,7 +604,7 @@ class Ui_MainWindow(object):
                   self.chooseFunction2.model().item(LENGTH).setEnabled(True)
                   self.chooseFunction2.model().item(SPECIES).setEnabled(False)
                   self.chooseFunction2.model().item(EXTERNAL).setEnabled(False)
-                  chooseIndexPlaceholderText = "0 - " + str(len(model.reactions) - 1)
+                  chooseIndexPlaceholderText = "0 - " + str(len(model.reactionSubsets) - 1)
                   self.chooseIndex.setPlaceholderText(chooseIndexPlaceholderText)
               if(index == METABOLITES):
                   self.chooseIndex.setVisible(True)
@@ -665,33 +678,17 @@ class Ui_MainWindow(object):
 
         ERROR = -1
         CHOOSE = 0
-
-        REDUCE_NETWORK = 1
-        ADD_RXN = 2
-        DELETE_RXN = 3
-        FIND_BIOMASS_RXN = 4
-        REACTIONS = 5
-        REACTION_SUBSETS = 6
-        METABOLITES = 7
-        PRINT_RXN_FORMULA = 8
-        DELETE_METAB = 9
-        ADD_METAB = 10
-
         NAME = 1
-        PAIRS = 2
-        REDUCTION_STATUS = 3
-        REVERSIBLE = 4
-        LENGTH = 5
-        SPECIES = 6
-        EXTERNAL = 7
+        METABOLITES = 7
+        SPECIES = 5
         
         if ( index1 == METABOLITES and index2 == SPECIES):
-            #self.executeAction.setEnabled(False)
             if(param1 == ""):
                 self.executeAction.setEnabled(False)
             else:
                 self.executeAction.setEnabled(True)
             self.chooseFunction3.setVisible(True)
+            self.chooseFunction3.setCurrentIndex(NAME)
             dropdown3_open = True
         else:
             if(index2 != CHOOSE):
@@ -705,41 +702,13 @@ class Ui_MainWindow(object):
             self.chooseFunction3.setVisible(False)
             dropdown3_open = False
 
-
+    # enables/disable the executeAction button based on the third dropdown menu 
     def hide3(self):
-        global dropdown1_open
-        dropdown1_open = True
-        global dropdown2_open
-        dropdown2_open = True
-        global dropdown3_open
-        dropdown3_open = True
-
-        index1 = self.chooseFunction1.findText(self.chooseFunction1.currentText())
-        index2 = self.chooseFunction2.findText(self.chooseFunction2.currentText())
         index3 = self.chooseFunction3.findText(self.chooseFunction3.currentText())
         param1 = self.chooseIndex.text()
 
         ERROR = -1
         CHOOSE = 0
-
-        REDUCE_NETWORK = 1
-        ADD_RXN = 2
-        DELETE_RXN = 3
-        FIND_BIOMASS_RXN = 4
-        REACTIONS = 5
-        REACTION_SUBSETS = 6
-        METABOLITES = 7
-        PRINT_RXN_FORMULA = 8
-        DELETE_METAB = 9
-        ADD_METAB = 10
-
-        NAME = 1
-        PAIRS = 2
-        REDUCTION_STATUS = 3
-        REVERSIBLE = 4
-        LENGTH = 5
-        SPECIES = 6
-        EXTERNAL = 7
 
         if(index3 == CHOOSE):
             self.executeAction.setEnabled(False)
@@ -784,8 +753,8 @@ class Ui_MainWindow(object):
         REDUCTION_STATUS = 3
         REVERSIBLE = 4
         LENGTH = 5
-        SPECIES = 6
-        EXTERNAL = 7
+        SPECIES = 5
+        EXTERNAL = 6
 
 
         #grabs the index of the current dropdown option
@@ -842,6 +811,9 @@ class Ui_MainWindow(object):
                         print(">>> model.%s(%d)" % (function1, param1))
                         print(getattr(model, function1)(param1))
 
+                # addReaction requires two parameters:
+                # parameter 1: reaction name
+                # parameter 2: list of pairs
                 elif(index1 == ADD_RXN):
                     function1 = str(self.chooseFunction1.currentText())
                     addReactionName = str(self.rxnParam1.text())
@@ -857,16 +829,22 @@ class Ui_MainWindow(object):
 
                     self.myThread = WorkerThread(model,function1, ADD_RXN,self.executeAction, addReactionName, list)
                     self.myThread.start()
-                    #print(">>> model.%s('%s',%s)" % (function1,addReactionName,list))
-                    #print(getattr(model, function1)(addReactionName, list))
 
+                # addMetabolite requires two parameters:
+                # parameter 1: reaction name
+                # parameter 2: list of pairs
                 elif(index1 == ADD_METAB):
                     function1 = str(self.chooseFunction1.currentText())
                     addMetaboliteName = str(self.rxnParam1.text())
                     addMetaboliteCompartment = str(self.rxnParam2.text())
-                    print(">>> model.%s('%s',%s)" % (function1,addMetaboliteName,addMetaboliteCompartment))
-                    print(getattr(model, function1)(addMetaboliteName, addMetaboliteCompartment))
+                    self.myThread = WorkerThread(model,function1, ADD_METAB,self.executeAction, addMetaboliteName, [] ,addMetaboliteCompartment)
+                    self.myThread.start()
+                    #print(">>> model.%s('%s',%s)" % (function1,addMetaboliteName,addMetaboliteCompartment))
+                    #print(getattr(model, function1)(addMetaboliteName, addMetaboliteCompartment))
 
+                # deleteMetabolites/deleteReaction requires two parameters:
+                # parameter 1: reaction name
+                # parameter 2: list of pairs
                 elif(index1 == DELETE_METAB or index1 == DELETE_RXN):
                     function1 = str(self.chooseFunction1.currentText())
                     param1 = self.chooseIndex.text()
@@ -880,24 +858,24 @@ class Ui_MainWindow(object):
                         count = count + 1
                     else:
                         list = [Fraction(el) for el in param1.split(',')]
-                    print(">>> model.%s(%s)" % (function1,list))
-                    print(getattr(model, function1)(list))
+                    if(index1 == DELETE_METAB):
+                        self.myThread = WorkerThread(model,function1, DELETE_METAB,self.executeAction, "", list)
+                        self.myThread.start()
+                    else:
+                        self.myThread = WorkerThread(model,function1, DELETE_RXN,self.executeAction, "", list)
+                        self.myThread.start()
+                    #print(">>> model.%s(%s)" % (function1,list))
+                    #print(getattr(model, function1)(list))
                 else:
 
                     function1 = str(self.chooseFunction1.currentText())
-                    #call function and display output
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
-                        #self.executeAction.setEnabled(False)
                         print("Reducing network")
-                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK, self.executeAction)
-                        #start_time = time.time()
+                        self.myThread = WorkerThread(model,function1, REDUCE_NETWORK, self.executeAction) #multi threading
                         self.myThread.start()
-                        #self.executeAction.setEnabled(True)
-                        #print(getattr(model, function1)())
-                        #print(time.time() - start_time)
                     elif(index1 == FIND_ESS_RXN):
-                        self.myThread = WorkerThread(model,function1, FIND_ESS_RXN, self.executeAction)
+                        self.myThread = WorkerThread(model,function1, FIND_ESS_RXN, self.executeAction) #multi threading
                         self.myThread.start()
                     elif(index1 == FIND_SYNTH_LETH_PAIRS):
                         numProc = self.chooseParallel.text()
@@ -909,12 +887,12 @@ class Ui_MainWindow(object):
                             #print(time.time() - start_time)
                         elif(numProc == 0):
                             print("Finding synthetic lethal pairs")
-                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction)
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction) #multi threading
                             self.myThread.start()
                         else:
                             numProc = 0
                             print("Finding synthetic lethal pairs")
-                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction)
+                            self.myThread = WorkerThread(model,function1, FIND_SYNTH_LETH_PAIRS,self.executeAction) #multi threading
                             self.myThread.start()
                     else:
                         print(getattr(model, function1)())
