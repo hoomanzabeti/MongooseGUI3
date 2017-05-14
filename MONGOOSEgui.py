@@ -162,6 +162,13 @@ class Ui_MainWindow(object):
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
 
+         # output results that change the model ( add/delRxn, add/delMetab)
+        self.changedResultOutput = QtGui.QTextEdit(self.centralwidget)
+        self.changedResultOutput.setGeometry(QtCore.QRect(0, 0, 0, 0)) #"invisible" output, meant only to store certain outputs
+        self.changedResultOutput.setObjectName(_fromUtf8("changedResultOutput"))
+        self.changedResultOutput.setReadOnly(True)
+        self.changedResultOutput.setTextInteractionFlags(QtCore.Qt.NoTextInteraction) #crucial line
+
         # output
         self.resultOutput = QtGui.QTextEdit(self.centralwidget)
         self.resultOutput.setGeometry(QtCore.QRect(280, 50, 361, 440))
@@ -190,20 +197,29 @@ class Ui_MainWindow(object):
         # intializes saveContent button
         self.saveContent = QtGui.QPushButton(self.centralwidget)
         self.saveContent.setGeometry(QtCore.QRect(20, 360, 200, 32))
+        #self.saveContent.setGeometry(QtCore.QRect(20, 360, 50, 32))
         self.saveContent.setObjectName(_fromUtf8("saveContent"))
         self.saveContent.clicked.connect(self.save_content)
         self.saveContent.setEnabled(False)
 
+        # intializes saveChangedModelContent button
+        self.saveChangedModelContent = QtGui.QPushButton(self.centralwidget)
+        self.saveChangedModelContent.setGeometry(QtCore.QRect(20, 390, 200, 32))
+        self.saveChangedModelContent.setObjectName(_fromUtf8("saveChangedModelContent"))
+        self.saveChangedModelContent.clicked.connect(self.save_changed_model_content)
+        self.saveChangedModelContent.setEnabled(False)
+
+
         # intializes saveModel button
         self.saveModel = QtGui.QPushButton(self.centralwidget)
-        self.saveModel.setGeometry(QtCore.QRect(20, 390, 200, 32))
+        self.saveModel.setGeometry(QtCore.QRect(20, 420, 200, 32))
         self.saveModel.setObjectName(_fromUtf8("saveModel"))
         self.saveModel.clicked.connect(self.save_model)
         self.saveModel.setEnabled(False)
 
         # intializes writeSBML button
         self.writeSBML = QtGui.QPushButton(self.centralwidget)
-        self.writeSBML.setGeometry(QtCore.QRect(20, 420, 200, 32))
+        self.writeSBML.setGeometry(QtCore.QRect(20, 450, 200, 32))
         self.writeSBML.setObjectName(_fromUtf8("writeSBML"))
         self.writeSBML.clicked.connect(self.write_sbml)
         self.writeSBML.setEnabled(False)
@@ -341,6 +357,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
         self.executeAction.setText(_translate("MainWindow", "Execute Action", None))
         self.saveContent.setText(_translate("MainWindow", "Save Contents", None))
+        self.saveChangedModelContent.setText(_translate("MainWindow", "Save Changed Contents", None))
         self.selectFile.setText(_translate("MainWindow", "Upload File", None))
         self.saveModel.setText(_translate("MainWindow", "Save Model", None))
         self.writeSBML.setText(_translate("MainWindow", "Write SBML", None))
@@ -397,6 +414,7 @@ class Ui_MainWindow(object):
             self.saveModel.setEnabled(True)
             self.executeAction.setEnabled(True)
             self.saveContent.setEnabled(True)
+            self.saveChangedModelContent.setEnabled(True)
             self.writeSBML.setEnabled(True)
             self.selectModel.setEnabled(False)
             self.selectFile.setEnabled(False)
@@ -430,12 +448,23 @@ class Ui_MainWindow(object):
     # saves contents of console to desired text file
     def save_content (self):
         choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Contents', 'Are you sure you want to save the contents?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
-        #choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Contents', 'Are you sure you want to save the contents?', QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
             name = QtGui.QFileDialog.getSaveFileName(QtGui.QMainWindow(), 'Save File')
             file = open(name,'w')
             text = self.resultOutput.toPlainText()
             file.write(str(self.resultOutput.toPlainText()))
+            file.close()
+        else:
+            pass
+
+    # saves contents of console to desired text file
+    def save_changed_model_content (self):
+        choice = QtGui.QMessageBox.question(QtGui.QMainWindow(), 'Save Changed Model Contents', 'Are you sure you want to save the contents?', QtGui.QMessageBox.No | QtGui.QMessageBox.Yes)
+        if choice == QtGui.QMessageBox.Yes:
+            name = QtGui.QFileDialog.getSaveFileName(QtGui.QMainWindow(), 'Save File')
+            file = open(name,'w')
+            text = self.changedResultOutput.toPlainText()
+            file.write(str(self.changedResultOutput.toPlainText()))
             file.close()
         else:
             pass
@@ -815,6 +844,7 @@ class Ui_MainWindow(object):
                 # parameter 1: reaction name
                 # parameter 2: list of pairs
                 elif(index1 == ADD_RXN):
+                    XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
                     function1 = str(self.chooseFunction1.currentText())
                     addReactionName = str(self.rxnParam1.text())
                     addReactionPairs = str(self.rxnParam2.text())
@@ -834,18 +864,18 @@ class Ui_MainWindow(object):
                 # parameter 1: reaction name
                 # parameter 2: list of pairs
                 elif(index1 == ADD_METAB):
+                    XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
                     function1 = str(self.chooseFunction1.currentText())
                     addMetaboliteName = str(self.rxnParam1.text())
                     addMetaboliteCompartment = str(self.rxnParam2.text())
                     self.myThread = WorkerThread(model,function1, ADD_METAB,self.executeAction, addMetaboliteName, [] ,addMetaboliteCompartment)
                     self.myThread.start()
-                    #print(">>> model.%s('%s',%s)" % (function1,addMetaboliteName,addMetaboliteCompartment))
-                    #print(getattr(model, function1)(addMetaboliteName, addMetaboliteCompartment))
 
                 # deleteMetabolites/deleteReaction requires two parameters:
                 # parameter 1: reaction name
                 # parameter 2: list of pairs
                 elif(index1 == DELETE_METAB or index1 == DELETE_RXN):
+                    XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
                     function1 = str(self.chooseFunction1.currentText())
                     param1 = self.chooseIndex.text()
                     if param1:
@@ -864,13 +894,12 @@ class Ui_MainWindow(object):
                     else:
                         self.myThread = WorkerThread(model,function1, DELETE_RXN,self.executeAction, "", list)
                         self.myThread.start()
-                    #print(">>> model.%s(%s)" % (function1,list))
-                    #print(getattr(model, function1)(list))
                 else:
 
                     function1 = str(self.chooseFunction1.currentText())
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
+                        XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
                         print("Reducing network")
                         self.myThread = WorkerThread(model,function1, REDUCE_NETWORK, self.executeAction) #multi threading
                         self.myThread.start()
