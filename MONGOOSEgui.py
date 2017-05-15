@@ -899,7 +899,7 @@ class Ui_MainWindow(object):
                     function1 = str(self.chooseFunction1.currentText())
                     print(">>> model.%s()" % (function1))
                     if(index1 == REDUCE_NETWORK):
-                        XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
+                        #XStream.stdout().messageWritten.connect( self.changedResultOutput.append ) #redirects print statements from terminal to output widget
                         print("Reducing network")
                         self.myThread = WorkerThread(model,function1, REDUCE_NETWORK, self.executeAction) #multi threading
                         self.myThread.start()
