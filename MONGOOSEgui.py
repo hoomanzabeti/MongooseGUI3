@@ -1,9 +1,3 @@
-'''
-Coding Standard:
-----------------
--> lower/upper case for multi word variables or underscore seperated
--> all upper case for constants
-'''
 import os
 import sys
 import logging
@@ -14,7 +8,7 @@ import time
 from functools import partial
 from MetaMerge import *
 from PyQt4 import QtCore, QtGui, uic
-from PyQt4.QtCore import QThread
+#from PyQt4.QtCore import QThread
 
 
 
@@ -84,11 +78,11 @@ class XStream(QtCore.QObject):
         return XStream._stderr
 
 # provided multi threading capabilities
-class WorkerThread(QThread):
+class WorkerThread(QtCore.QThread):
 
     # thread init
     def __init__(self,model_name, function_name,  index_name ,execute_action, additional_name = "", list = [], compartment_name = ""):
-        QThread.__init__(self)
+        QtCore.QThread.__init__(self)
         self.model_name = model_name
         self.function_name = function_name
         self.index_name = index_name
@@ -114,7 +108,7 @@ class WorkerThread(QThread):
             self.execute_action.setEnabled(False)
             print(getattr(self.model_name, self.function_name)())
             self.execute_action.setEnabled(True)
-            
+
             #print(time.time() - start_time)
         elif(self.index_name == self.findSyntheticLethalPairs):
             self.execute_action.setEnabled(False)
@@ -247,7 +241,7 @@ class Ui_MainWindow(object):
 
         # intializes title of app
         self.title = QtGui.QLabel(self.centralwidget)
-        self.title.setGeometry(QtCore.QRect(120, 5, 420, 31))
+        self.title.setGeometry(QtCore.QRect(50, 5, 570, 31))
         font = QtGui.QFont()
         font.setPointSize(22)
         self.title.setFont(font)
@@ -256,7 +250,7 @@ class Ui_MainWindow(object):
 
         # intializes second dropdown menu, chooses a function
         self.chooseFunction2 = QtGui.QComboBox(self.centralwidget)
-        self.chooseFunction2.setGeometry(QtCore.QRect(20, 174, 200, 50))
+        self.chooseFunction2.setGeometry(QtCore.QRect(20, 179, 200, 30))
         self.chooseFunction2.setObjectName(_fromUtf8("chooseFunction2"))
         self.chooseFunction2.addItem(_fromUtf8(""))
         self.chooseFunction2.addItem(_fromUtf8(""))
@@ -270,7 +264,7 @@ class Ui_MainWindow(object):
 
         # intializes first dropdown menu, chooses a function
         self.chooseFunction1 = QtGui.QComboBox(self.centralwidget)
-        self.chooseFunction1.setGeometry(QtCore.QRect(20, 137, 200, 50))
+        self.chooseFunction1.setGeometry(QtCore.QRect(20, 142, 200, 30))
         self.chooseFunction1.setObjectName(_fromUtf8("chooseFunction1"))
         self.chooseFunction1.addItem(_fromUtf8(""))
         self.chooseFunction1.addItem(_fromUtf8(""))
@@ -297,7 +291,7 @@ class Ui_MainWindow(object):
 
         # intializes index input
         self.chooseIndex = QtGui.QLineEdit(self.centralwidget)
-        self.chooseIndex.setGeometry(QtCore.QRect(220, 140, 53, 45))
+        self.chooseIndex.setGeometry(QtCore.QRect(220, 135, 53, 45))
         self.chooseIndex.setObjectName(_fromUtf8("chooseIndex"))
         self.chooseIndex.setPlaceholderText('[index]')
         self.chooseIndex.setVisible(False)
@@ -305,7 +299,7 @@ class Ui_MainWindow(object):
 
         # intializes parallel input
         self.chooseParallel = QtGui.QLineEdit(self.centralwidget)
-        self.chooseParallel.setGeometry(QtCore.QRect(220, 140, 53, 45))
+        self.chooseParallel.setGeometry(QtCore.QRect(220, 135, 53, 45))
         self.chooseParallel.setObjectName(_fromUtf8("chooseIndex"))
         #self.chooseParallel.setPlaceholderText('threads')
         self.chooseParallel.setVisible(False)
@@ -313,7 +307,7 @@ class Ui_MainWindow(object):
 
         # intializes third dropdown menu, chooses a function
         self.chooseFunction3 = QtGui.QComboBox(self.centralwidget)
-        self.chooseFunction3.setGeometry(QtCore.QRect(20, 198, 200, 50))
+        self.chooseFunction3.setGeometry(QtCore.QRect(20, 215, 200, 30))
         self.chooseFunction3.setObjectName(_fromUtf8("chooseFunction3"))
         self.chooseFunction3.addItem(_fromUtf8(""))
         self.chooseFunction3.addItem(_fromUtf8(""))
@@ -325,7 +319,7 @@ class Ui_MainWindow(object):
 
         #reaction name inputs
         self.rxnParam1 = QtGui.QLineEdit(self.centralwidget)
-        self.rxnParam1.setGeometry(QtCore.QRect(20, 240, 190, 25))
+        self.rxnParam1.setGeometry(QtCore.QRect(20, 265, 190, 25))
         self.rxnParam1.setObjectName(_fromUtf8("rxnParam1"))
         self.label1 = QtGui.QLabel(self.centralwidget)
         self.label1.setGeometry(QtCore.QRect(30, 245, 56, 13))
@@ -337,7 +331,7 @@ class Ui_MainWindow(object):
 
         #reaction number inputs
         self.rxnParam2 = QtGui.QLineEdit(self.centralwidget)
-        self.rxnParam2.setGeometry(QtCore.QRect(20, 270, 190, 25))
+        self.rxnParam2.setGeometry(QtCore.QRect(20, 295, 190, 25))
         self.rxnParam2.setObjectName(_fromUtf8("rxnParam2"))
         self.rxnParam2.setPlaceholderText('List Of Pairs')
         self.rxnParam2.setVisible(False)
@@ -508,7 +502,7 @@ class Ui_MainWindow(object):
             self.executeAction.setEnabled(True)
         else:
             self.executeAction.setEnabled(False)
-    
+
     #controls enable/disable of execute actions button based on list of reactions input
     def rxnParam2_onoff(self):
         rxnName = self.rxnParam1.text()
@@ -535,7 +529,7 @@ class Ui_MainWindow(object):
                     if( index2 == SPECIES):
                         if ( index3 == CHOOSE):
                             self.executeAction.setEnabled(False)
-                        else: 
+                        else:
                             self.executeAction.setEnabled(True)
                     else:
                         self.executeAction.setEnabled(True)
@@ -686,7 +680,7 @@ class Ui_MainWindow(object):
                 self.chooseIndex.setVisible(False)
                 self.chooseParallel.setVisible(False)
                 self.executeAction.setEnabled(True)
-            
+
             self.chooseFunction2.setVisible(False)
             self.chooseFunction3.setVisible(False)
             dropdown2_open = False
@@ -710,7 +704,7 @@ class Ui_MainWindow(object):
         NAME = 1
         METABOLITES = 7
         SPECIES = 5
-        
+
         if ( index1 == METABOLITES and index2 == SPECIES):
             if(param1 == ""):
                 self.executeAction.setEnabled(False)
@@ -731,7 +725,7 @@ class Ui_MainWindow(object):
             self.chooseFunction3.setVisible(False)
             dropdown3_open = False
 
-    # enables/disable the executeAction button based on the third dropdown menu 
+    # enables/disable the executeAction button based on the third dropdown menu
     def hide3(self):
         index3 = self.chooseFunction3.findText(self.chooseFunction3.currentText())
         param1 = self.chooseIndex.text()
@@ -830,7 +824,7 @@ class Ui_MainWindow(object):
                         param1 = int ( str( param1 ) )
                     else:
                         print("Choose an index")
-                    
+
                     if( index1 != PRINT_RXN_FORMULA):
                         #call function and display output
                         print(">>> model.%s(%d)" % (function1, param1))
