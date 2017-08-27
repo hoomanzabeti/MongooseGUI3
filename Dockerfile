@@ -1,20 +1,101 @@
 FROM ubuntu:16.04
 
 #HOW TO RUN
-#1. Open Terminal
-#2. Open XQuartz: open -a XQuartz (download from: https://www.xquartz.org)
-#3. Set IP: IP=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}') if on ethernet
-#3. or IP=$(ifconfig en1 | grep inet | awk '$1=="inet" {print $2}') if on wifi
-#4. Add IP: xhost + $IP
-#5. Build docker image: docker build -t mongoose .
-#6. Run docker image:
-# docker run -ti --rm=true -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix mongoose
-#7. Use MONGOOSE
-#8. After saving results, copy any files from the container to your local machine with the following command
-# on your local machine's terminal:
-# docker cp <container_id>:/path/to/file/in/container /path/to/local/machine
-# i.e.: docker cp 665bd8e6cbad:/MongooseGUI3/docker_results.txt /Users/hostName/Documents/Leonid/MongooseGUI3
-#9. Exit Docker by the command: exit
+#To run this Dockerfile the following is necessary ( a Mac OS is assumed ): do not include the beginning '$', this is to simply indicate a terminal command.
+#
+#Open Terminal
+#
+#Open XQuartz: (download from: https://www.xquartz.org)
+#
+#    $  open -a XQuartz
+#3.1: Set IP: if on ethernet
+#
+#    $  IP=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+#3.2: or if on wifi
+#
+#    $  IP=$(ifconfig en1 | grep inet | awk '$1=="inet" {print $2}')
+#Add IP:
+#
+#    $   xhost + $IP
+#Next we would like to build the docker image. This step can be done one of two ways:
+#5.1:
+#a. Pull our github repository (https://github.com/WGS-TB/MongooseGUI3) using the command:
+#
+#    $  git clone https://github.com/WGS-TB/MongooseGUI3.git
+#b. cd into the cloned directory
+#c. Build docker image:
+#
+#    $  docker build -t mongoose .
+#OR
+#5.2:
+#a.
+#
+#    $  docker pull ctlevn/mongoose
+#At the end of either methods, run :
+#
+#    $  docker images
+#to confirm that the docker image has been built successfully. You will see something similar to the following:
+#REPOSITORY TAG IMAGE ID CREATED SIZE
+#mongoose latest f3e77cc7b7b0 2 days ago 1.21 GB
+#ctlevn/mongoose latest f3e77cc7b7b0 2 days ago 1.21 GB
+#
+#Run docker image:
+#If you did step 5.1 above, perform the following command:
+#
+#    $  docker run -ti --rm=true -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix mongoose
+#If you did step 5.2 above, perform the following command:
+#
+#    $  docker run -ti --rm=true -e DISPLAY=$IP:0 -v /tmp/.X11-unix:/tmp/.X11-unix ctlevn/mongoose
+#The terminal where you ran the command is now an interactive terminal for the Docker container.
+#Terminal commands such as ls, cd, and etc work. To go to the MongooseGUI3 directory run the command:
+#
+#    $  cd /MongooseGUI3
+#Now we need to create a shelve file to analyze. The XML files can be downloaded from here:
+#http://cb.csail.mit.edu/cb/mongoose/models.html (middle column)
+#
+#Once the file is downloaded, we can copy the file from our local machine to the container:
+#First open up another terminal to navigate the local machine. There should now be two terminals open,
+#one for Docker and one for the local machine.
+#Now in the local machines terminal run the following:
+#
+#    $  docker ps -a
+#This will list the running processes. Observe the container ID.
+#In order to copy the downloaded file from our local machine to the container, run the following:
+#
+#    $  docker cp /path/to/local/machine <container_id>:/MongooseGUI3
+#i.e.:
+#
+#    $  docker cp /Users/hostName/Documents/Leonid/MongooseGUI3/AG1Model 665bd8e6cbad:/MongooseGUI3
+#where: /path/to/local/machine is the path of the file on your local machine.
+#<container_id> is the corresponding container id
+#/MongooseGUI3 is the proper destination path in the container.
+#
+#To create a shelve file run the following:
+#
+#   $  python3 -i ModelParsing.py
+#Then, within Python:
+#
+#model = parseSBML('<replace_with_file_name>.xml')
+#model.adjustCompartments('xt', startPos = -2)
+#model.biomassCoefficients[760] = 1
+#s=shelve.open('ParsedModel')
+#s['AB1'] = model
+#s.close()
+#exit()
+#
+#After this you will have the file called 'DockerModel' that will contain the parsed model inside it
+#Then to run the GUI, perform the command:
+#$ python3 MongooseGUI3
+#The GUI should now start up.
+#
+#After saving results, copy any files from the container to your local machine with the following command
+#on your local machine's terminal:
+#
+#   $  docker cp <container_id>:/path/to/file/in/container /path/to/local/machine
+#i.e:
+#
+#   $  docker cp 665bd8e6cbad:/MongooseGUI3/docker_results.txt /Users/hostName/Documents/Leonid/MongooseGUI3
+#Exit Docker by the command: exit
 
 
 
