@@ -501,13 +501,17 @@ def findPosSupportNew(N, support, weight = [1], Filename = 'trial.lp', Min = 0, 
     #     print('Error: the weight vector is not of the right length!')
     # opt += '\n'
     # const = 'Subject' + ' To' * int(Cplex) + '\n'
+    variables_to_pass = []
+
 
     if len(weight) == len(support):
         for ind, item in enumerate(support):
             p.add_variable(name = 'Y' + str(item), objective = weight[ind], lower = curLower, upper = curUpper)
+            variables_to_pass.append('Y' + str(item))
     elif len(weight) == 1:
         for ind, item in enumerate(support):
             p.add_variable(name = 'Y' + str(item), objective = 1, lower = curLower, upper = curUpper)
+            variables_to_pass.append('Y' + str(item))
     else:
         print('Error: the weight vector is not of the right length!')
 
@@ -516,6 +520,7 @@ def findPosSupportNew(N, support, weight = [1], Filename = 'trial.lp', Min = 0, 
     for ind in range(n):
         if ind not in support:
             p.add_variable(name = 'Y' + str(ind), objective = 0, lower = 0, upper = (0 if restricted else None))
+            variables_to_pass.append('Y' + str(ind))
 
     # if option == 'row':
     #     const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
@@ -529,7 +534,7 @@ def findPosSupportNew(N, support, weight = [1], Filename = 'trial.lp', Min = 0, 
         for ind in range(m):
             if [_f for _f in N[ind] if _f]:
                 p.add_variable(name = 'X' + str(ind), objective = 0, lower = None, upper = None)
-        print("THE n IS " + str(n))
+                variables_to_pass.append('Y' + str(ind))
         for j in range(n):
             curDict = {'X'+str(i) : N[i][j] for i in range(m)}
             curDict.update({'Y'+str(j) : -1})
@@ -550,7 +555,7 @@ def findPosSupportNew(N, support, weight = [1], Filename = 'trial.lp', Min = 0, 
     # f.close()
     # return processFile(Filename, True)
 
-    return processProblem(p)
+    return processProblem(p, variables_to_pass)
 
 def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, Cplex = False, option = 'row'):
     # This function finds the vector optimizing a given weight in the row/nullspace of N whose
@@ -1067,32 +1072,52 @@ def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, supp
     result = parseOutput(outFile, opt)
     if destroyOut:
         subprocess.call(["rm", outFile])
+    print('The answer is: ')
+    print(result)
     return result
 
-def processProblem(p, opt = False, verbose = False):
+def processProblem(p, vector, opt = False, verbose = False):
+    print('solving(1)')
     status = p.solve()
+    print('solving(2)')
     dico = {}
+    print('solving(3)')
+
     if status == qsoptex.SolutionStatus.OPTIMAL:
         value = p.get_objective_value()
+        print('solving(4)')
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
             print('Note: problem is unbounded!')
         value = [float('Inf')]
+        print('solving(5)')
     elif status == qsoptex.SolutionStatus.INFEASIBLE:
         if verbose:
+            print('solving(6)')
             print('Note: problem is infeasible!')
         value = []
     else:
         if verbose:
+            print('solving(7)')
             print('Problem: A solution was not found!')
         return
     if opt:
         if type(value) == type(zero): # the optimal value is finite
-            dico = {} ### FROM HERE!
+            print('solving(8)')
+        dico = {}
+        for var in vector:
+            dico.update({var: p.get_value(var)})
+        print('solving(9)')
         return (value, dico)
     else:
-        return value
+        print('The answer is: ')
+        print(value)
+        dico = {}
+        for var in vector:
+            dico.update({var: p.get_value(var)})
 
+        return (value, dico)
+    
 def parseOutput(Filename, opt = False, verbose = False):
     # This function parses a solution file in the QSOpt_ex format
     # and returns a list containing the value of the objective function ([] if
