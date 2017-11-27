@@ -2,8 +2,14 @@
 # Created by: Leonid Chindelevitch
 # Last modified: January 30, 2017
 
+use_new_methods = open('mode.txt', 'r').read() == 'True'
+
+
 from OutputProcessing import CreateSMatrix
-from ModelProcessing import *
+if use_new_methods:
+	from ModelProcessingRevised import *
+else:
+	from ModelProcessing import *
 from Utilities import *
 from Unrelated import *
 from fractions import Fraction
