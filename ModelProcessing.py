@@ -604,9 +604,9 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
     f.write('End\n')
     f.close()
     # exit()
-    f = open(Filename, 'r')
-    print("content:\n" + str(f.readlines()))
-    f.close
+    # f = open(Filename, 'r')
+    # print("content:\n" + str(f.readlines()))
+    # f.close
     return processFile(Filename, True)
 
 def findSBlocked(N, NB = False):
@@ -721,6 +721,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
         return True
     else:
         return False
+
 
 def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', Cplex = False):
     # This function computes the distance from a given vector vec to the row span of a matrix.
@@ -967,6 +968,7 @@ def reconfigureNetwork(N, irrev):
     rev = filterOut(rev, badInds)
     return (newN, rev)
 
+
 def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disable = [], negative = [], option = 'null', Cplex = False):
     # This function finds a feasible vector in the row/nullspace of N whose set of irreversible
     # reactions is given. The entry corresponding to special is 1 if pos is True, -1 otherwise.
@@ -1076,8 +1078,10 @@ def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, supp
     result = parseOutput(outFile, opt)
     if destroyOut:
         subprocess.call(["rm", outFile])
-    print(result)
-    exit()
+    # print(result)
+    print("the answer is ")
+    print(result[0])
+    # exit()
     return result
 
 

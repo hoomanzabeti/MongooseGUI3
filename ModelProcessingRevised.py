@@ -416,9 +416,9 @@ def findTBlocked(N, Irrev, basename = 'TBlocked.lp', restricted = True, option =
     Min = -1 if rev else 0
     while len(found) < len(Irrev):
         curName = basename[:index] + str(Iter) + basename[index:]
-        print("FINE")
+        # print("FINE")
         (val, vec) = findPosSupport(N, Irrev, weight, curName, Min = Min, restricted = restricted, option = option)
-        print("STILL FINE")
+        # print("STILL FINE")
         if val > 0:
             Iter = Iter + 1
             if rev:
@@ -464,23 +464,10 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
     # If restricted = False, same but support is NOT restricted to the given set of entries.
     # print("NEW fps!")
     m, n = getSize(N)
-    # intro = 'Problem\n'
     p = qsoptex.ExactProblem()
-    # opt = 'Maximize\n'
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
-
-
-
-    # if Min:
-    #     if Min > 0:
-    #         bounds += ''.join(['Y' + str(j) + ' >= ' + str(Min) + '\n' for j in support])
-    #     else:
-    #         bounds += ''.join([str(Min) + ' <= Y' + str(j) + ' <= ' + str(-Min) + '\n' for j in support])
-    # else:
-    #     bounds += ''.join(['Y' + str(j) + ' <= 1\n' for j in support])
-    # if Cplex:
-    #     const = const.replace('+ -', '-')
-
+    variables = set([])
+    for i in range(n):  variables.add('Y' + str(i))
     if Min:
         if Min > 0:
             curLower, curUpper = Min, None
@@ -488,83 +475,35 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
             curLower, curUpper = Min, -Min
     else:
         curLower, curUpper = 0, 1
-
-    # Cplex is false
-    # if Cplex:
-    #     print()
-
-    # if len(weight) == len(support):
-    #     opt += ' + '.join([str(weight[i]) + ' Y' + str(support[i]) for i in range(len(support)) if weight[i]])
-    # elif len(weight) == 1:   # equal weights, take all of them equal to 1
-    #     opt += ' + '.join(['Y' + str(i) for i in support])
-    # else:
-    #     print('Error: the weight vector is not of the right length!')
-    # opt += '\n'
-    # const = 'Subject' + ' To' * int(Cplex) + '\n'
-    variables_to_pass = []
-
-
     if len(weight) == len(support):
         for ind, item in enumerate(support):
-            p.add_variable(name = 'Y' + str(item), objective = weight[ind], lower = curLower, upper = curUpper)
-            variables_to_pass.append('Y' + str(item))
+            p.add_variable(name='Y' + str(item), objective=weight[ind], lower=curLower, upper=curUpper)
     elif len(weight) == 1:
         for ind, item in enumerate(support):
-            p.add_variable(name = 'Y' + str(item), objective = 1, lower = curLower, upper = curUpper)
-            variables_to_pass.append('Y' + str(item))
+            p.add_variable(name='Y' + str(item), objective=1, lower=curLower, upper=curUpper)
     else:
         print('Error: the weight vector is not of the right length!')
-
-    # if restricted:
-    #     bounds += ''.join(['Y' + str(j) + ' = 0\n' for j in range(n) if j not in support])
     for ind in range(n):
         if ind not in support:
-            p.add_variable(name = 'Y' + str(ind), objective = 0, lower = 0, upper = (0 if restricted else None))
-            # variables_to_pass.append('Y' + str(ind))
-
-    # if option == 'row':
-    #     const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
-    # else:
-    #     const += ''.join([' + '.join([str(N[i][j]) + ' Y' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
-    # bounds = 'Bounds\n'
-    # if option == 'row':
-    #     bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
-
+            p.add_variable(name='Y' + str(ind), objective=0, lower=0, upper=(0 if restricted else None))
     if option == 'row':
-        for ind in range(m):
-            if [_f for _f in N[ind] if _f]:
-                p.add_variable(name = 'X' + str(ind), objective = 0, lower = None, upper = None)
-                variables_to_pass.append('X' + str(ind))
+        for i in range(m):
+            if [_f for _f in N[i] if _f]:
+                p.add_variable(name = 'X' + str(i), objective = 0, lower = None, upper = None)
+                variables.add('X' + str(i))
         for j in range(n):
             curDict = {}
             for i in range(m):
                 if N[i][j] != 0:
-                    curDict.update({'X'+str(i) : N[i][j]})
-            curDict.update({'Y'+str(j) : -1})
+                    curDict.update({'X'+str(i): N[i][j]})
+            curDict.update({'Y'+str(j): -1})
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs = 0)
-            print(str(curDict) + " = 0")
     else: # option == 'null'
         for i in range(m):
-            print("NEW fps! (17)")
-            curDict = {}
             for j in range(n):
-                if N[i][j] != 0:
-                    curDict.update({'Y'+str(j) : N[i][j]})
-            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs = 0)
-            print(str(curDict) + " = 0")
+                p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'Y' + str(j): N[i][j] for j in range(n)}, rhs=0)
 
-    # opt += 'obj: '
-    # f = open(Filename, 'w')
-    # if not Cplex:
-    #     f.write(intro)
-    # f.write(opt)
-    # f.write(const)
-    # f.write(bounds)
-    # f.write('End\n')
-    # f.close()
-    # return processFile(Filename, True)
-    print(curDict)
-    return processProblem(p, variables_to_pass)
+    return processProblem(p, variables, True)
 
 def findSBlocked(N, NB = False):
     # This function finds all the stoichiometrically blocked reactions in a metabolic network
@@ -616,34 +555,36 @@ def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
     negatives = mapList(negIndices, Rev)
     posIndices = [i for i, x in enumerate(signs) if x == '+']
     positives = mapList(posIndices, Rev)
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Minimize\n'
-    if Cplex:
-        opt += ('Y' + str(0) + '\n')
-    else:
-        opt += '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
-    bounds = 'Bounds\n'
-    bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
-    bounds += ''.join([   '1 <= Y' + str(j) + '<= inf\n' for j in positives])
-    bounds += ''.join(['-inf <= Y' + str(j) + '<= -1 \n' for j in negatives])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    val = processFile(Filename, False)
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
+    variables = set([])
+    for j in range(n):
+        variables.add('Y' + str(j))
+
+    for j in range(n):
+        curDict = {}
+        for i in range(m):
+            if N[i][j]:
+                curDict.update({'X'+str(i): N[i][j]})
+        curDict.update({'Y'+str(j): -1})
+    p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+    for i in range(m):
+        if [_f for _f in N[i] if _f]:
+            p.add_variable('X' + str(i), objective = 0, lower=None, upper=None)
+            variables.add('X' + str(i))
+
+    for j in positives:
+        p.add_variable('Y' + j , obejective=0, lower=1, upper=None)
+    for j in negatives:
+        p.add_variable('Y' + j, obejective=0, lower=None, upper=-1)
+
+    val = processProblem(p, variables, False)
     if (type(val) == type([]) and len(val) == 0): # infeasible
         return False
     else:
         return True
+
 
 def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     # This function determines whether a given vector vec is in the row span of a matrix.
@@ -653,27 +594,27 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     if n != n1:
         print('Problem: the vector is not compatible with the matrix!')
         return False
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Maximize\n'
-    opt += 'obj: '
-    opt += ('Y' + '\n')
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + (' + ' + str(vec[j]) + ' Y')*int(bool(vec[j])) + '= 0\n' for j in range(n)])
-    # Note that this slightly strange syntax ensures that no zero coefficients appear in the LP file
-    bounds = 'Bounds\n'
-    bounds += ''.join(['-1 <= X' + str(i) + ' <= 1\n' for i in range(m) if [_f for _f in N[i] if _f]])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    val = processFile(Filename, False)
+    p = qsoptex.ExactProblem()
+
+    p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
+    p.add_variable('Y', objective=1, lower=0, upper=None)
+    variables = set(['Y'])
+
+    for j in range(n):
+        curDict = {}
+        for i in range(m):
+            if N[i][j]:
+                curDict.update({'X'+str(i): N[i][j]})
+        if bool(vec[j]):
+            curDict.update({'Y': vec[j]})
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+    for i in range(m):
+        if [_f for _f in N[i] if _f]:
+            variables.add('X' + str(i))
+            p.add_variable('X'+str(i), objective=0, lower=-1, upper=1)
+
+    val = processProblem(p, variables, False)
     if val:
         return True
     else:
@@ -688,38 +629,62 @@ def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', 
     if n != n1:
         print('Problem: the vector is not compatible with the matrix!')
         return
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Minimize\n'
-    opt += 'obj: '
-    opt += ('Y' + '\n')
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' - V' + str(j) + ' = 0\n' for j in range(n)])
-    const += ''.join(['V' + str(j) + ' - T' + str(j) + ' = ' + str(vec[j]) + '\n' for j in range(n)])
-    const += ''.join(['Y' + str(j) + ' + T' + str(j) + '>= 0\n' for j in range(n)])
-    const += ''.join(['Y' + str(j) + ' - T' + str(j) + '>= 0\n' for j in range(n)])
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
+    variables = set(['Y'])
+    p.add_variable('Y', objective=1, lower=0, upper=None)
+    for i in range(m):
+        if [_f for _f in N[i] if _f]:
+            variables.add('X' + str(i))
+            if i not in Irrev:
+                p.add_variable('X'+str(i),objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+
+    for j in range(n):
+        variables.add('V' + str(j))
+        p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+        variables.add('T' + str(j))
+        p.add_variable('T' + str(j), objective=0, lower=None, upper=None)
+        variables.add('Y' + str(j))
+        p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+
+    for j in range(n):
+        curDict = {}
+        for i in range(m):
+            if N[i][j]:
+                curDict.update({'X' + str(i): N[i][j]})
+        curDict.update({'V'+str(j): -1})
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+    for j in range(n):
+        curDict={'V'+str(j): 1, 'T'+str(j): -1}
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=vec[j])
+
+    for j in range(n):
+        curDict={'Y'+str(j): 1, 'T'+str(j): 1}
+        p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, curDict, rhs=0)
+
+    for j in range(n):
+        curDict={'Y'+str(j): 1, 'T'+str(j): -1}
+        p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, curDict, rhs=0)
+
     if norm == 'one':
-        const += ' + '.join(['Y' + str(j) for j in range(n)]) + '- Y = 0\n'
+        for j in range(n):
+            curDict.update({'Y'+str(j): 1})
+        curDict.update({'Y': -1})
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
     elif norm == 'inf':
-        const += ''.join(['Y' + str(j) + ' - Y <= 0\n' for j in range(n)])
+        for j in range(n):
+            curDict.update({'Y'+str(j): 1})
+        curDict.update({'Y': -1})
+        p.add_linear_constraint(qsoptex.ConstraintSense.LESS, curDict, rhs=0)
     else:
         print(('Error: the option ' + norm + ' is not a valid option for the norm!'))
         return
-    bounds = 'Bounds\n'
-    bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if i not in Irrev and [_f for _f in N[i] if _f]])
-    bounds += ''.join(['V' + str(j) + ' free\n' for j in range(n)])
-    bounds += ''.join(['T' + str(j) + ' free\n' for j in range(n)])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    return processFile(Filename, True)
+
+    return processProblem(p, variables, True)
+
 
 def findDistance(N, special, Irrev, norm = 'inf'):
     # This function determines the smallest change in biomass coefficients (reaction indexed
@@ -906,6 +871,7 @@ def processSubsets(N, curB):
     subsetReacts = anchors + lumpedReacts
     return (Enzymes, lumpedReacts, subsetReacts, newN)
 
+
 def reconfigureNetwork(N, irrev):
     # This function returns a reconfigured version of the given stoichiometric matrix
     # along with a list of reversible reaction indices that have been split into two.
@@ -922,7 +888,8 @@ def reconfigureNetwork(N, irrev):
         print('Error: all isozyme subsets should have size 2 during reconfiguration!')
     badInds = [subset[1] - n for subset in Isozymes]
     rev = filterOut(rev, badInds)
-    return (newN, rev)
+    return newN, rev
+
 
 def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disable = [], negative = [], option = 'null', Cplex = False):
     # This function finds a feasible vector in the row/nullspace of N whose set of irreversible
@@ -932,43 +899,47 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     # The option can be 'null' for nullspace (default) or 'row' for rowspace.
     m, n = getSize(N)
     Rev = [x for x in range(n) if x not in Irrev]
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Maximize\n'
-    if Cplex:
-        opt += ('V' + str(special) + '\n')
-    else:
-        opt += '\n'
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
+    variables = set([])
     # note: we are only looking for a feasible vector, hence no objective function required!
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
     if option == 'row':
-        const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 V' + str(j) + ' = 0\n' for j in range(n)])
+        for j in range(n):
+            curDict = {'V'+str(j):-1}
+            for i in range(m):
+                if N[i][j]:
+                    curDict.update({'X'+str(i): N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
     else: # assumes option = 'null'
-        const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
+        for i in range(m):
+            curDict = {}
+            for j in range(n):
+                if N[i][j]:
+                    curDict.update({'V'+str(j): N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
     if pos:
-        const += 'V' + str(special) + ' = 1\n'
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(special): 1}, rhs=1)
     else:
-        const += 'V' + str(special) + ' = -1\n'
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(special): 1}, rhs=-1)
     if disable:
-        const += ''.join(['V' + str(i) + ' = 0\n' for i in disable])
-    bounds = 'Bounds\n'
-    if negative:
-        bounds += ''.join(['-inf <= V' + str(i) + ' <= 0\n' for i in negative])
+        for i in disable:
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(i): 1}, rhs=0)
+
     if option == 'row':
-        bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
-    bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    if not Cplex:
-        return processFile(Filename, True)
+        for i in range(m):
+            if [_f for _f in N[i] if _f]:
+                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
+                variables.add('X'+str(i))
+
+    for i in Rev:
+        variables.add('V'+str(i))
+        if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
+            p.add_variable('V' + str(i), objective=0, lower=None, upper=None)
+        else:
+            p.add_variable('V' + str(i), objective=0, lower=0, upper=None)
+
+    return processProblem(p, variables, True)
+
 
 def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial.lp', Cplex = False):
     # This function finds the minimum or the maximum ratio of two given entries in the nullspace
@@ -976,47 +947,42 @@ def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial
     # If a ratio is specified, checks whether the difference react1 - ratio * react2 can equal 1.
     m, n = getSize(N)
     Rev = [x for x in range(n) if x not in Irrev]
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
+    p = qsoptex.ExactProblem()
+    variables = set([])
     if Max:
-        opt = 'Maximize\n'
+        p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
     else:
-        opt = 'Minimize\n'
+        p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
     if ratio != 0:
         num, den = ratio.numerator, ratio.denominator
-        if Cplex:
-            if num > 0:
-                opt += str(den) + ' V' + str(react1) + ' - ' + str(num)  + ' V' + str(react2) + '\n'
-            else:
-                opt += str(den) + ' V' + str(react1) + ' + ' + str(-num) + ' V' + str(react2) + '\n'
-        else:
-            opt += '\n'
+        p.add_variable('V'+ str(react1), objective = den, lower=None, upper=None)
+        p.add_variable('V' + str(react2), objective = -num, lower=None, upper=None)
     else:
-        opt += 'obj: '
-        opt += 'V' + str(react2) + '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
+        p.add_variable('V' + str(react1), objective=0, lower=None, upper=None)
+        p.add_variable('V' + str(react2), objective=1, lower=None, upper=None)
+    variables.add('V' + str(react1))
+    variables.add('V' + str(react2))
+
     if ratio != 0:
-        if num > 0:
-            const += str(den) + ' V' + str(react1) + ' - ' + str(num)  + ' V' + str(react2) + ' = 1\n'
-        else:
-            const += str(den) + ' V' + str(react1) + ' + ' + str(-num) + ' V' + str(react2) + ' = 1\n'
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V'+str(react1):den, 'V'+str(react2):-num}, rhs=1)
     else:
-        const += 'V' + str(react1) + ' = 1\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
-    bounds = 'Bounds\n'
-    bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if [_f for _f in [N[k][i] for k in range(m)] if _f]])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    if not Cplex:
-        return processFile(Filename)
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(react1): 1}, rhs=1)
+    # const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
+    for i in range(m):
+        curDicrt = {}
+        for j in range(n):
+            if N[i][j]:
+                curDict = {'V'+str(j): N[i][j]}
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+    # bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if [_f for _f in [N[k][i] for k in range(m)] if _f]])
+    for i in range(n):
+        if i != react1 or i != react2:
+            p.add_variable('V'+str(i), objective=0, lower=None, upper=None)
+            variables.add('V'+str(i))
+
+    return processProblem(p, variables)
+
 
 def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, suppressOutput = True):
     # This function processes the linear programming problem described in the specified file.
@@ -1033,44 +999,11 @@ def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, supp
     result = parseOutput(outFile, opt)
     if destroyOut:
         subprocess.call(["rm", outFile])
-    print('The answer is: ')
-    print(result)
+    # print(result)
+    print("the answer is ")
+    print(result[0])
+    # exit()
     return result
-
-def processProblem(p, vector, opt = False, verbose = False):
-    status = p.solve()
-    dico = {}
-
-    if status == qsoptex.SolutionStatus.OPTIMAL:
-        value = p.get_objective_value()
-    elif status == qsoptex.SolutionStatus.UNBOUNDED:
-        if verbose:
-            print('Note: problem is unbounded!')
-        value = [float('Inf')]
-    elif status == qsoptex.SolutionStatus.INFEASIBLE:
-        if verbose:
-            print('Note: problem is infeasible!')
-        value = []
-    else:
-        if verbose:
-            print('Problem: A solution was not found!')
-        return
-    if opt:
-        if type(value) == type(zero): # the optimal value is finite
-            dico = {}
-            for var in vector:
-                dico.update({var: p.get_value(var)})
-            print('solving(9)')
-            return (value, dico)
-    else:
-        print('The answer is: ')
-        print(value)
-        dico = {}
-        for var in vector:
-            dico.update({var: p.get_value(var)})
-        print((value, dico))
-        exit()
-        return (value, dico)
 
 
 def parseOutput(Filename, opt = False, verbose = False):
@@ -1293,66 +1226,93 @@ def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5,
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
     # Available option values currently are 'null' for nullspace and 'col' for columnspace.
     m, n = getSize(N)
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Minimize\n'
-    opt += 'obj: '
-    if rec:
-        var = 'V'
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
+    variables = set(['T', 'V'])
+
+    var = 'V' if rec else 'T'
+    for i in range(n):  variables.add('V' + str(i))
+    if option=='col':
+        for i in range(m):  variables.add('W' + str(i))
+    if option=='null' and not rec:
+        for i in range(n):  variables.add('T' + str(i))
     else:
-        var = 'T'
+        for i in range(m):  variables.add('T' + str(i))
+
     if option == 'null':
-        if len(weight) == n:
-            opt += ' + '.join([str(weight[i]) + ' ' + var + str(i) for i in range(n) if weight[i]])
-        else:   # equal weights, take all of them equal to 1
-            opt += ' + '.join([var + str(i) for i in range(n)])
+        if rec:
+            for i in range(n):
+                p.add_variable('V' + str(i), objective=weight[i] if len(weight) == n else 1, lower=0, upper=None)
+            for i in range(m):
+                p.add_variable('T' + str(i), objective=0, lower=0, upper=None)
+        else:
+            for j in range(n):
+                if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
+                    p.add_variable('V' + str(j), objective=0, lower=None, upper=None)
+                else:
+                    p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable('T' + str(j), objective=weight[j] if len(weight) == n else 1, lower=0, upper=None)
     elif option == 'col':
-        if len(weight) == m:
-            opt += ' + '.join([str(weight[i]) + ' T' + str(i) for i in range(m) if weight[i]])
-        else:   # equal weights, take all of them equal to 1
-            opt += ' + '.join(['T' + str(i) for i in range(m)])
+        for j in range(m):
+            if [_f for _f in N[j] if _f]:
+                p.add_variable('W' + str(j), objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('W' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+        for i in range(m):
+            if len(weight) == m:
+                p.add_variable('T'+str(i), objective= weight[i], lower=0, upper=None)
+            else:   # equal weights, take all of them equal to 1
+                p.add_variable('T'+str(i), objective=1,lower=0, upper=None)
     else:
         print('Error: unrecognized option!')
         return
-    opt += '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
+
     if option == 'null':
-        const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
+        for i in range(m):
+            curDict= {}
+            for j in range(n):
+                if N[i][j]:
+                    curDict.update({'V'+str(j):N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
         if not rec:
-            const += ''.join(['T' + str(j) + ' + V' + str(j) + '>= 0\n' for j in range(n)])
-            const += ''.join(['T' + str(j) + ' - V' + str(j) + '>= 0\n' for j in range(n)])
+            for j in range(n):
+                p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, {'T'+str(j):1, 'V'+str(j):1}, rhs=0)
+                for j in range(n):
+                    p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, {'T' + str(j): 1, 'V' + str(j): -1}, rhs=0)
     elif option == 'col':
-        const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' - W' + str(i) + ' = 0\n' for i in range(m)])
-        const += ''.join(['T' + str(j) + ' + W' + str(j) + '>= 0\n' for j in range(m)])
-        const += ''.join(['T' + str(j) + ' - W' + str(j) + '>= 0\n' for j in range(m)])
-    const += 'V' + str(special) + ' = 1\n'
+        for i in range(m):
+            curDict = {}
+            for j in range(n):
+                if N[i][j]:
+                    curDict.update({'V'+str(j):N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+        for j in range(m):
+            p.add_linear_constraint(qsoptex.ConstraintSense.GREATER_EQUAL, {'T'+str(j):1, 'W'+str(j):1 })
+
+        for j in range(m):
+            p.add_linear_constraint(qsoptex.ConstraintSense.GREATER_EQUAL, {'T'+str(j):1, 'W'+str(j):-1 })
+
+    p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V'+str(special):1}, rhs=1)
     if zeros:
-        const += ''.join(['V' + str(x) + ' = 0\n' for x in zeros])
+        for x in zeros: p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL,{'V'+str(x):1},rhs=0)
     if exclude:
         k = len(exclude)
         s = len(exclude[0])
         if s == n:
-            const += ''.join([' + '.join([var + str(j) for j in range(n) if not exclude[i][j]]) + ' >' + str(eps) + '\n' for i in range(k)])
+            for i in range(k):
+                curDict={}
+                for j in range(j):
+                    if not exclude[i][j]:
+                        curDict.update({var+str(j):1})
+                p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, curDict, rhs=eps)
         else:
             print("Error: the length of the excluded vectors is incorrect!")
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    if option == 'col':
-        bounds = 'Bounds\n'
-        bounds += ''.join(['W' + str(j) + ' free\n' for j in range(m) if [_f for _f in N[j] if _f]])
-        f.write(bounds)
-    elif not rec:
-        bounds = 'Bounds\n'
-        bounds += ''.join(['V' + str(j) + ' free\n' for j in range(n) if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]])
-        f.write(bounds)
-    f.write('End\n')
-    f.close()
-    return processFile(Filename, True)
+
+    return processProblem(p, variables, True)
+
 
 def LCM(a,b):
     # This function computes the least common multiple of two integers
@@ -1442,32 +1402,23 @@ def testCutSet(Cutset, N, Target, Filename = 'trial.lp', rec = True, I = [], Cpl
     # unless rec is specified to be False. In that case, the reactions considered to be
     # irreversible should be specified in I.
     m, n = getSize(N)
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Minimize\n'
-    if Cplex:
-        opt += 'V' + str(Target) + '\n'
-    else:
-        opt += '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += 'V' + str(Target) + ' = 1\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
+    variables = set([])
+    p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V'+str(Target):1}, rhs=1)
+    for i in range(m):
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(j): N[i][j] for j in range(n)}, rhs=0)
+
     for react in Cutset:
-        const += 'V' + str(react) + ' = 0\n'
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(react): 1}, rhs=0)
     if not rec:
-        bounds = 'Bounds\n'
-        bounds += ''.join(['V' + str(j) + ' free\n' for j in range(n) if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]])
-        f.write(bounds)
-    f.write('End\n')
-    f.close()
-    val = processFile(Filename)
+        for j in range(n):
+            if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
+                p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+            variables.add('V'+str(j))
+    val = processProblem(p, variables)
     return (type(val) == type([]) and len(val) == 0) # TRUE IFF THE PROBLEM IS INFEASIBLE
 
 def testSet(Set, Function, Args):
@@ -1766,55 +1717,81 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
     # The entry corresponding to special is 1. Extra lower bounds may be supplied as extra.
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
     m, n = getSize(N)
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Minimize\n'
-    opt += 'obj: '
-    if len(weight) == n:
-        opt += ' + '.join([str(weight[i]) + ' T' + str(i) for i in range(n) if weight[i]])
-    else:   # equal weights, take all of them equal to 1
-        opt += ' + '.join(['T' + str(i) for i in range(n)])
-    opt += '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
+    variables = set([])
+
+    for i in range(n):
+        p.add_variable('T' + str(i), objective=weight[i] if len(weight)==n else 1, lower=0, upper=None)
+        variables.add('T'+str(i))
+
     if option == 'row':
-        const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(i) for i in range(m) if N[i][j]]) + ' + -1 Y' + str(j) + ' = 0\n' for j in range(n)])
-        const += ''.join(['Y' + str(j) + ' + T' + str(j) + '>= 0\n' for j in range(n)])
-        const += 'Y' + str(special) + ' = 1\n'
+
+        for j in range(n):
+            curDict = {'Y'+str(j):-1}
+            for i in range(m):
+                if N[i][j]:
+                    curDict.update({'X'+str(i):N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+        for j in range(n):
+            p.add_linear_constraint(qsoptex.ConstraintSense.GREATER_EQUAL, {'Y'+str(j):1, 'T' + str(j): 1}, rhs=0)
+
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'Y' + str(special): 1}, rhs=0)
     elif option == 'null':
-        const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
-        const += ''.join(['X' + str(j) + ' + T' + str(j) + '>= 0\n' for j in range(n)])
-        const += 'X' + str(special) + ' = 1\n'
+        for j in range(m):
+            curDict={}
+            for i in range(n):
+                if N[i][j]:
+                    curDict.update({'X'+str(j): N[i][j]})
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+        for j in range(n):
+            p.add_linear_constraint(qsoptex.ConstraintSense.GREATER_EQUAL, {'X' + str(j): 1, 'T' + str(j): 1}, rhs=0)
+
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'X' + str(special): 1}, rhs=0)
     if exclude:
         k = len(exclude)
         s = len(exclude[0])
         if s == n:
-            const += ''.join([' + '.join(['T' + str(j) for j in range(n) if not exclude[i][j]]) + ' >' + str(eps) + '\n' for i in range(k)])
+
+            for i in range(k):
+                curDict={}
+                for j in range(n):
+                    if not exclude[i][j]:
+                        curDict={'T'+str(j):1}
+                p.add_linear_constraint(qsoptex.ConstraintSense.GREATER, curDict, rhs=eps)
         else:
             print("Error: the length of the excluded vectors is incorrect!")
     bounds = 'Bounds\n'
     if option == 'row':
-        bounds += ''.join(['X' + str(i) + ' free\n' for i in range(m) if [_f for _f in N[i] if _f]])
-        bounds += ''.join(['Y' + str(j) + ' free\n' for j in range(n) if j not in extra])
+        for i in range(m):
+            if [_f for _f in N[i] if _f]:
+                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+
+        for j in range(n):
+            if j not in extra:
+                p.add_variable('Y' + str(j), objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('Y' + str(j), objective=0, lower=round(extra[j],5), upper=0)
         ## AL; changed order of bounds to make QSopt_ex not complain
         # bounds += ''.join(['Y'+str(j)+'<='+str(round(extra[j],5)) + '\n' for j in extra])
         print(''.join([str(round(extra[j],5))+'<=' + 'Y' + str(j)+'<= 0'+ '\n' for j in extra]))
-        bounds += ''.join([str(round(extra[j],5))+'<=' + 'Y' + str(j)+'<= 0\n' for j in extra])
+
+        # bounds += ''.join([str(round(extra[j],5))+'<=' + 'Y' + str(j)+'<= 0\n' for j in extra])
         print([round(extra[j],5) for j in extra])
         #note that this puts the automatic upper bound that Yj<=0 as per QSopt_ex defaults
         #const += ''.join(['Y' + str(j) + ' >= ' + str(round(extra[j],5)) + '\n' for j in extra])
     elif option == 'null':
         bounds += ''.join(['X' + str(j) + ' free\n' for j in range(n) if [_f for _f in [N[i][j] for i in range(m)] if _f]])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    return processFile(Filename, True,destroyIn=False,destroyOut=False)
+        for i in range(n):
+            if [_f for _f in [N[i][j] for i in range(m)] if _f]:
+                p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+            else:
+                p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+
+    return processProblem(p,variables, True,destroyIn=False,destroyOut=False)
 
 def checkUnblocked(RemoveConst, N, Irr, growth, Filename = 'Unblock.lp'):
     # This function checks whether removing a given subset of constraints
@@ -2321,34 +2298,32 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
     # The free metabolites are ones that can be considered given (i.e. they can be consumed).
     # NOTE: To get meaningful results, the input matrix should contain external metabolites!
     m, n = getSize(N)
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Maximize\n'
-    opt += 'obj: '
-    if len(weight) == m:
-        opt += ' + '.join([str(weight[i]) + ' Y' + str(i) for i in range(m) if weight[i]])
-    elif len(weight) == 1:   # equal weights, take all of them equal to 1
-        opt += ' + '.join(['Y' + str(i) for i in range(m)])
-    else:
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
+    variables = set([])
+    if len(weight)!=m and len(weight)!=1:
         print('Error: the weight vector is not of the right length!')
-    opt += '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' X' + str(j) for j in range(n) if N[i][j]]) + ' + -1 Y' + str(i) + ' = 0\n' for i in range(m)])
-    bounds = 'Bounds\n'
-    bounds += ''.join(['X' + str(j) + ' free\n' for j in range(n) if j not in Irrev])
-    bounds += ''.join(['-1 <= Y' + str(i) + ' <= 1\n' for i in freeMetabs])
-    bounds += ''.join(['Y' + str(i) + ' <= 1\n' for i in range(m) if i not in freeMetabs])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    return processFile(Filename, True)
+    for i in range(m):
+        variables.add('Y'+str(i))
+        if i in freeMetabs:
+            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=-1, upper=1)
+        else:
+            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=0, upper=1)
+    for j in range(n):
+        variables.add('X'+str(j))
+        if j not in Irrev:
+            p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+        else:
+            p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
+
+
+    for i in range(m):
+        curDict={'Y'+str(i):-1}
+        for j in range(n):
+            curDict.update({'X'+str(j):N[i][j]})
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+    return processProblem(p, True, variables)
 
 def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec = True, I = [], forbidden = [], Negative = [], Cplex = False):
     # This procedure finds the maximal growth rate of an organism in a medium defined
@@ -2366,31 +2341,79 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     else:
         Irrev = list(range(n))
     Rev = [x for x in range(n) if x not in Irrev]
-    intro = 'Problem\n'
-    intro += (Filename.replace('.lp', '') + '\n')
-    opt = 'Maximize' + '\n' +  'V' + str(growth) + '\n'
-    const = 'Subject' + ' To' * int(Cplex) + '\n'
-    const += ''.join([' + '.join([str(N[i][j]) + ' V' + str(j) for j in range(n) if N[i][j]]) + ' = 0\n' for i in range(m)])
+    p = qsoptex.ExactProblem()
+    p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
+
+    variables = set(['V'+str(growth)])
+    p.add_variable('V'+str(growth), objective=1, lower=0, upper=None)
+
+    for i in range(m):
+        curDict={}
+        for j in range(n):
+            if N[i][j]:
+                curDict.update({'V'+str(j):N[i][j]})
+        p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+
+
     if Forbidden:
-        const += ''.join(['V' + str(i) + ' = 0\n' for i in Forbidden])
+        for i in forbidden:
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V'+str(i):1}, rhs=0)
+
     if len(limits) == 1:
-        const += ''.join(['V' + str(i) + ' <= 1\n' for i in allowed])
+        for i in allowed:
+            p.add_linear_constraint(qsoptex.ConstraintSense.LESS_EQUAL, {'V' + str(i): 1}, rhs=0)
+
     elif len(limits) == len(allowed):
-        const += ''.join(['V' + str(allowed[i]) + ' <= ' + str(allowed[i]) + '\n' for i in range(len(allowed))])
+        for i in range(len(allowed)):
+            p.add_linear_constraint(qsoptex.ConstraintSense.LESS_EQUAL, {'V' + str(allowed[i]): 1}, rhs=allowed[i])
     else:
         print('Error: incompatible dimension of limits!')
-    bounds = 'Bounds\n'
     if Negative:
-        bounds += ''.join(['-inf <= V' + str(i) + ' <= 0\n' for i in Negative])
-    bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if i not in Negative and [_f for _f in [N[k][i] for k in range(m)] if _f]])
-    if Cplex:
-        const = const.replace('+ -', '-')
-    f = open(Filename, 'w')
-    if not Cplex:
-        f.write(intro)
-    f.write(opt)
-    f.write(const)
-    f.write(bounds)
-    f.write('End\n')
-    f.close()
-    return processFile(Filename)
+        for i in range(n):
+            if i in Negative:
+                p.add_variable('V'+str(i), objective=1 if i==growth else 0, lower=None, upper=0)
+            elif i in Rev and [_f for _f in [N[k][i] for k in range(m)] if _f]:
+                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=None, upper=None)
+            else:
+                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=0, upper=None)
+            variables.add('V'+str(i))
+
+    return processProblem(p, variables)
+
+
+def processProblem(p, vector, opt = False, verbose = False):
+    status = p.solve()
+
+    if status == qsoptex.SolutionStatus.OPTIMAL:
+        value = p.get_objective_value()
+    elif status == qsoptex.SolutionStatus.UNBOUNDED:
+        if verbose:
+            print('Note: problem is unbounded!')
+        value = [float('Inf')]
+    elif status == qsoptex.SolutionStatus.INFEASIBLE:
+        if verbose:
+            print('Note: problem is infeasible!')
+        value = []
+    else:
+        if verbose:
+            print('Problem: A solution was not found!')
+        return
+    if opt:
+        # TODO:!!!
+        # if type(value) == type(zero): # the optimal value is finite
+        dico = {}
+        for var in vector:
+            dico.update({var: p.get_value(var)})
+        print('The answer is: ')
+        print(value)
+        return value, dico
+    else:
+        print('The answer is: ')
+        print(value)
+        dico = {}
+        for var in vector:
+            dico.update({var: p.get_value(var)})
+            # print(p)
+        # print((value, dico))
+        # exit()
+        return value, dico
