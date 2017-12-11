@@ -2,14 +2,39 @@
 # Created by: Leonid Chindelevitch
 # Last modified: January 30, 2017
 
-use_new_methods = open('mode.txt', 'r').read() == 'True'
+use_new_methods = int(open('mode.txt', 'r').read())
 
 
 from OutputProcessing import CreateSMatrix
-if use_new_methods:
-	from ModelProcessingRevised import *
+if use_new_methods == 0:
+    from ModelProcessing import *
+elif use_new_methods == -1:
+    from ModelProcessingRevised import *
+elif use_new_methods == 1:
+    from ModelProcessing_01_findPosSupport import *
+elif use_new_methods == 2:
+    from ModelProcessing_02_checkSigns import *
+elif use_new_methods == 3:
+    from ModelProcessing_03_vectorInSpan import *
+elif use_new_methods == 4:
+    from ModelProcessing_04_computeDistance import *
+elif use_new_methods == 5:
+    from ModelProcessing_05_findFeasible import *
+elif use_new_methods == 6:
+    from ModelProcessing_06_findRatio import *
+elif use_new_methods == 7:
+    from ModelProcessing_07_findMin1Norm import *
+elif use_new_methods == 8:
+    from ModelProcessing_08_testCutSet import *
+elif use_new_methods == 9:
+    from ModelProcessing_09_findMinAdded import *
+elif use_new_methods == 10:
+    from ModelProcessing_10_findFreeLunch import *
+elif use_new_methods == 11:
+    from ModelProcessing_11_FBA import *
 else:
-	from ModelProcessing import *
+    print('Error! in ClassDefinitons')
+    exit()
 from Utilities import *
 from Unrelated import *
 from fractions import Fraction

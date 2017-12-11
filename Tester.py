@@ -67,14 +67,18 @@ if '-r' in sys.argv:
     exit()
 
 elif '-j' in sys.argv:
-    open('mode.txt', 'w').write('False')
+    open('mode.txt', 'w').write('0')
 elif '-c' in sys.argv:
     unittest.main()
     Tester.test_all()
     exit()
 
 elif '-t' in sys.argv:
-    open('mode.txt', 'w',).write('True')
+    ind = sys.argv.index('-t')
+    if len(sys.argv) != ind+1 and sys.argv[ind+1].isdigit():
+        open('mode.txt', 'w',).write(sys.argv[ind+1])
+    else:
+        open('mode.txt', 'w', ).write('-1')
 
 import tests.Test01
 
