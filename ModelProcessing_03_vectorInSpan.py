@@ -690,6 +690,7 @@ def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
 
 
 def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function determines whether a given vector vec is in the row span of a matrix.
     # This is achieved by solving a linear program using QSOpt_ex and checking its value.
     m, n = getSize(N)

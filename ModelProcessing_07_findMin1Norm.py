@@ -1296,6 +1296,7 @@ def findUniqueEFMs(EFMs):
         return EFMs
 
 def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5, Filename = 'trial.lp', option = 'null', rec = True, I = [], Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds the vector of smallest overall weight in the nullspace of N whose
     # reactions are assumed to be all irreversible unless rec is specified to be False.
     # In that case, the reactions considered to be irreversible should be specified in I.

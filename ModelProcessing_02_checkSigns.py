@@ -653,6 +653,7 @@ def flipSigns(signs):
 
 
 def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # Thus function checks whether a particular sign pattern on the reversible reactions gives
     # a feasible vector in the rowspace of the input matrix; signs is a string of '+' and '-'.
     m, n = getSize(N)

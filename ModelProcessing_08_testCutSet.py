@@ -1449,6 +1449,7 @@ def findMCS(N, special, Filename = 'trial.lp'):
     return MCSs
 
 def testCutSet(Cutset, N, Target, Filename = 'trial.lp', rec = True, I = [], Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function determines whether a given subset of reactions represents a cutset
     # for a given target reaction in a network which is assumed to be irreversible,
     # unless rec is specified to be False. In that case, the reactions considered to be

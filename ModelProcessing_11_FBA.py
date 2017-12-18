@@ -2363,6 +2363,7 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
     return processFile(Filename, True)
 
 def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec = True, I = [], forbidden = [], Negative = [], Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This procedure finds the maximal growth rate of an organism in a medium defined
     # by the set of exchange reactions and the subset of allowed exchange reactions.
     # The bounds on the flux of each allowed reaction are given by the vector limits.

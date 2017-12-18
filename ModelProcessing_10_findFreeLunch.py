@@ -2328,6 +2328,7 @@ def classifyExchange(FullNetwork, externalMetabs, Irrev, extra = False):
     return (InputIrr, InputRev, OutputIrr, OutputRev, MixedIrr, MixedRev)
 
 def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds the vector optimizing a given weight in the column space of N with
     # nonnegative entries and whose flux vector satisfies the irreversibility conditions.
     # The free metabolites are ones that can be considered given (i.e. they can be consumed).

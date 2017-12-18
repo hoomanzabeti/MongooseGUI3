@@ -1773,6 +1773,7 @@ def generateSubsets(n, k):
             break
 
 def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 'trial.lp', extra = {}, option = 'row', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds the nonnegative vector of smallest weight to be added to a vector
     # in the rowspace of N (nullspace if option is 'null') to make the resulting vector >=0.
     # The entry corresponding to special is 1. Extra lower bounds may be supplied as extra.

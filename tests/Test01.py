@@ -6,5 +6,7 @@ model.biomassCoefficients[760] = 1
 s = shelve.open('ParsedModel')
 s['AB1'] = model
 model.reduceNetwork()
-
+# model.checkReduced()
+# model.createMatrices()
+# model.
 

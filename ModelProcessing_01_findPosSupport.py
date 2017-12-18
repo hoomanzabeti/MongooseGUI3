@@ -11,6 +11,7 @@ from fractions import Fraction
 from Utilities import *
 import multiprocessing
 import qsoptex
+import json
 
 zero, one = Fraction(0), Fraction(1)
 
@@ -558,6 +559,7 @@ def prepareForCplex(Matrix):
 #     return processProblem(p, variables_to_pass)
 
 def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, option = 'row'):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds the vector optimizing a given weight in the row/nullspace of N whose
     # support is restricted to a given set of entries; those entries must be non-negative!
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
@@ -2430,6 +2432,10 @@ def processProblem(p, vector, opt = False, verbose = False):
             dico.update({var: p.get_value(var)})
         print('The answer is: ')
         print(value)
+        s = open('solution.txt', 'w')
+        s.write(str(value)+'\n')
+        s.write(str(dico)[1:-1])
+        s.close()
         return value, dico
     else:
         print('The answer is: ')

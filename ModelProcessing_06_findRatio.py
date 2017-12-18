@@ -1016,6 +1016,7 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
         return processFile(Filename, True)
 
 def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial.lp', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds the minimum or the maximum ratio of two given entries in the nullspace
     # of N whose set of irreversible reactions is given. Maximize if Max is True, minimize if not.
     # If a ratio is specified, checks whether the difference react1 - ratio * react2 can equal 1.

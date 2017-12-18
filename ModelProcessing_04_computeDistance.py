@@ -724,6 +724,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
 
 
 def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', Cplex = False):
+    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function computes the distance from a given vector vec to the row span of a matrix.
     # The possible options for norm are 'one', 'two' and 'inf'; 'two' is currently unavailable.
     # The optional list Irrev specifies the set of row coefficients required to be nonnegative.
