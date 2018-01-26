@@ -982,6 +982,24 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
     variables = set([])
     # note: we are only looking for a feasible vector, hence no objective function required!
+
+    if option == 'row':
+        for i in range(m):
+            if [_f for _f in N[i] if _f]:
+                print("I'm here")
+                p.add_variable(name='X'+str(i), objective=0, lower=None, upper=None)
+                variables.add('X'+str(i))
+                print("I'm there")
+
+    for i in Rev:
+        variables.add('V'+str(i))
+        if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
+            p.add_variable(name='V' + str(i), objective=0, lower=None, upper=None)
+        else:
+            p.add_variable(name='V' + str(i), objective=0, lower=0, upper=None)
+
+
+
     if option == 'row':
         for j in range(n):
             curDict = {'V'+str(j):-1}
@@ -992,10 +1010,14 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     else: # assumes option = 'null'
         for i in range(m):
             curDict = {}
+            # print('HERE + ' + str(i))
             for j in range(n):
                 if N[i][j]:
                     curDict.update({'V'+str(j): N[i][j]})
+            # print('>>>')
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
+            # print('<<<')
+
     if pos:
         p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(special): 1}, rhs=1)
     else:
@@ -1003,19 +1025,7 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     if disable:
         for i in disable:
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(i): 1}, rhs=0)
-
-    if option == 'row':
-        for i in range(m):
-            if [_f for _f in N[i] if _f]:
-                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
-                variables.add('X'+str(i))
-
-    for i in Rev:
-        variables.add('V'+str(i))
-        if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
-            p.add_variable('V' + str(i), objective=0, lower=None, upper=None)
-        else:
-            p.add_variable('V' + str(i), objective=0, lower=0, upper=None)
+    print('HERE(-1)')
 
     return processProblem(p, variables, True)
 
@@ -2414,35 +2424,56 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
 
 
 def processProblem(p, vector, opt = False, verbose = False):
+    print('Here solving one...')
     status = p.solve()
-
+    print('Here solved one...')
+    verbose = True
     if status == qsoptex.SolutionStatus.OPTIMAL:
         value = p.get_objective_value()
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
             print('Note: problem is unbounded!')
         value = [float('Inf')]
+        return value, {}
     elif status == qsoptex.SolutionStatus.INFEASIBLE:
         if verbose:
             print('Note: problem is infeasible!')
         value = []
+        return value, {}
     else:
         if verbose:
             print('Problem: A solution was not found!')
-        return
+        return [], {}
     if opt:
-        # TODO:!!!
         # if type(value) == type(zero): # the optimal value is finite
         dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
         for var in vector:
             dico.update({var: p.get_value(var)})
         print('The answer is: ')
         print(value)
+        s = open('solution.txt', 'w')
+        s.write(str(value)+'\n')
+        s.write(str(dico)[1:-1])
+        s.close()
         return value, dico
     else:
         print('The answer is: ')
         print(value)
         dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
         for var in vector:
             dico.update({var: p.get_value(var)})
             # print(p)

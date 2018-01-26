@@ -2431,3 +2431,61 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     f.write('End\n')
     f.close()
     return processFile(Filename)
+
+def processProblem(p, vector, opt = False, verbose = False):
+    print('Here solving one...')
+    status = p.solve()
+    print('Here solved one...')
+    verbose = True
+    if status == qsoptex.SolutionStatus.OPTIMAL:
+        value = p.get_objective_value()
+    elif status == qsoptex.SolutionStatus.UNBOUNDED:
+        if verbose:
+            print('Note: problem is unbounded!')
+        value = [float('Inf')]
+        return value, {}
+    elif status == qsoptex.SolutionStatus.INFEASIBLE:
+        if verbose:
+            print('Note: problem is infeasible!')
+        value = []
+        return value, {}
+    else:
+        if verbose:
+            print('Problem: A solution was not found!')
+        return [], {}
+    if opt:
+        # if type(value) == type(zero): # the optimal value is finite
+        dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
+        for var in vector:
+            dico.update({var: p.get_value(var)})
+        print('The answer is: ')
+        print(value)
+        s = open('solution.txt', 'w')
+        s.write(str(value)+'\n')
+        s.write(str(dico)[1:-1])
+        s.close()
+        return value, dico
+    else:
+        print('The answer is: ')
+        print(value)
+        dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
+        for var in vector:
+            dico.update({var: p.get_value(var)})
+            # print(p)
+        # print((value, dico))
+        # exit()
+        return value, dico

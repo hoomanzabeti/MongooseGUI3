@@ -1,8 +1,8 @@
 Deleted 564 topologically blocked rows!
 Deleted 335 topologically blocked columns!
-Removed 352 thermodynamically blocked reactions!
-Removed 126 stoichiometrically blocked reactions!
-Identified 0 reactions that can only go forward!
-Identified and flipped 0 reactions that can only go backward!
-Grouped 59 reactions into 24 subsets!
-Removed 340 redundant constraints!
+Removed 132 thermodynamically blocked reactions!
+Removed 23 stoichiometrically blocked reactions!
+Identified 48 reactions that can only go forward!
+Identified and flipped 15 reactions that can only go backward!
+Grouped 177 reactions into 58 subsets!
+Removed 254 redundant constraints!

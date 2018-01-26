@@ -559,7 +559,7 @@ def prepareForCplex(Matrix):
 #     return processProblem(p, variables_to_pass)
 
 def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, option = 'row'):
-    print('\n##\n##\n##\n TEST \n##\n##\n##')
+    print('Passed here!<0>')
     # This function finds the vector optimizing a given weight in the row/nullspace of N whose
     # support is restricted to a given set of entries; those entries must be non-negative!
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
@@ -578,6 +578,7 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
             curLower, curUpper = Min, -Min
     else:
         curLower, curUpper = 0, 1
+    print('Passed here!<1>')
     if len(weight) == len(support):
         for ind, item in enumerate(support):
             p.add_variable(name='Y' + str(item), objective=weight[ind], lower=curLower, upper=curUpper)
@@ -586,14 +587,18 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
             p.add_variable(name='Y' + str(item), objective=1, lower=curLower, upper=curUpper)
     else:
         print('Error: the weight vector is not of the right length!')
+    print('Passed here!<2>')
     for ind in range(n):
         if ind not in support:
             p.add_variable(name='Y' + str(ind), objective=0, lower=0, upper=(0 if restricted else None))
+    print('Passed here!<3>')
     if option == 'row':
+        print('Passed here!<3.5>')
         for i in range(m):
             if [_f for _f in N[i] if _f]:
                 p.add_variable(name = 'X' + str(i), objective = 0, lower = None, upper = None)
                 variables.add('X' + str(i))
+        print('Passed here!<4>')
         for j in range(n):
             curDict = {}
             for i in range(m):
@@ -601,10 +606,11 @@ def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, res
                     curDict.update({'X'+str(i): N[i][j]})
             curDict.update({'Y'+str(j): -1})
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs = 0)
+        print('Passed here!<5>')
     else: # option == 'null'
+        print('Passed here!<6>')
         for i in range(m):
-            for j in range(n):
-                p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'Y' + str(j): N[i][j] for j in range(n)}, rhs=0)
+            p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'Y' + str(j): N[i][j] for j in range(n)}, rhs=0)
 
     return processProblem(p, variables, True)
 
@@ -2408,26 +2414,36 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
 
 
 def processProblem(p, vector, opt = False, verbose = False):
+    print('Here solving one...')
     status = p.solve()
-
+    print('Here solved one...')
+    verbose = True
     if status == qsoptex.SolutionStatus.OPTIMAL:
         value = p.get_objective_value()
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
             print('Note: problem is unbounded!')
         value = [float('Inf')]
+        return value, {}
     elif status == qsoptex.SolutionStatus.INFEASIBLE:
         if verbose:
             print('Note: problem is infeasible!')
         value = []
+        return value, {}
     else:
         if verbose:
             print('Problem: A solution was not found!')
-        return
+        return [], {}
     if opt:
-        # TODO:!!!
         # if type(value) == type(zero): # the optimal value is finite
         dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
         for var in vector:
             dico.update({var: p.get_value(var)})
         print('The answer is: ')
@@ -2441,6 +2457,13 @@ def processProblem(p, vector, opt = False, verbose = False):
         print('The answer is: ')
         print(value)
         dico = {}
+        copy_vector = vector.copy()
+        for var in vector:
+            if p.get_value(var) == Fraction(0):
+                copy_vector.remove(var)
+
+        vector = copy_vector
+
         for var in vector:
             dico.update({var: p.get_value(var)})
             # print(p)
