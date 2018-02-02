@@ -80,12 +80,27 @@ elif '-t' in sys.argv:
     else:
         open('mode.txt', 'w', ).write('-1')
 
-import tests.Test01
+if '-n' in sys.argv:
+    ind = sys.argv.index('-n')
+    n = int(sys.argv[ind+1])
+    if n == 1:
+        import tests.Test01
+    elif n == 2:
+        import tests.Test02
+    elif n == 3:
+        import tests.Test03
+    elif n == 4:
+        import tests.Test04
+    elif n == 5:
+        import tests.Test05
+    elif n == 6:
+        import tests.Test06
 
-# if '-j' in sys.argv:
-#     # shutil.move('Reduction.txt', 'tests/test01_judge_01.txt')
-#     # shutil.move('ReductionFull.txt', 'tests/test01_judge_02.txt')
-# elif '-t' in sys.argv:
-    # shutil.move('Reduction.txt', 'tests/test01_tester_01.txt')
-    # shutil.move('ReductionFull.txt', 'tests/test01_tester_02.txt')
+
+if '-j' in sys.argv:
+    shutil.move('Reduction.txt', 'tests/test01_judge_01.txt')
+    shutil.move('ReductionFull.txt', 'tests/test01_judge_02.txt')
+elif '-t' in sys.argv:
+    shutil.move('Reduction.txt', 'tests/test01_tester_01.txt')
+    shutil.move('ReductionFull.txt', 'tests/test01_tester_02.txt')
 

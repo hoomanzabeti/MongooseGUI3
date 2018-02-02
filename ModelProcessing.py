@@ -970,7 +970,6 @@ def reconfigureNetwork(N, irrev):
 
 
 def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disable = [], negative = [], option = 'null', Cplex = False):
-    print('\n##\n##\n##\n TEST \n##\n##\n##')
     # This function finds a feasible vector in the row/nullspace of N whose set of irreversible
     # reactions is given. The entry corresponding to special is 1 if pos is True, -1 otherwise.
     # Additional features: it is now possible to specify a subset of reactions to be disabled

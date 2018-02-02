@@ -13,6 +13,8 @@ import multiprocessing
 import qsoptex
 
 zero, one = Fraction(0), Fraction(1)
+used = [0] * 11
+
 
 #Docker ESOLVER_PATH:
 ESOLVER_PATH = "/qsopt-ex/build/esolver/.libs/esolver"
@@ -33,7 +35,7 @@ def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
     # 6) Find and delete redundant constraints.
 
     # rows[i], cols[i] contains the iteration at which the i-th row, column was deleted
-    print("<> Here!")
+    # print("<> Here!")
     m, n = getSize(N)
     rows, cols = [0]*m, [0]*n
     # currows[i], curcols[i] is the index of the current i-th row, column in original matrix
@@ -457,6 +459,7 @@ def prepareForCplex(Matrix):
 
 
 def findPosSupport(N, support, weight = [1], Filename = 'trial.lp', Min = 0, restricted = True, option = 'row'):
+    used[0] = 1
     # This function finds the vector optimizing a given weight in the row/nullspace of N whose
     # support is restricted to a given set of entries; those entries must be non-negative!
     # Note: if the weight vector has a single component, it is automatically taken to be 1!
@@ -547,6 +550,7 @@ def flipSigns(signs):
     return signsF
 
 def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
+    used[1] = 1
     # Thus function checks whether a particular sign pattern on the reversible reactions gives
     # a feasible vector in the rowspace of the input matrix; signs is a string of '+' and '-'.
     m, n = getSize(N)
@@ -586,6 +590,7 @@ def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
 
 
 def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
+    used[2] = 1
     # This function determines whether a given vector vec is in the row span of a matrix.
     # This is achieved by solving a linear program using QSOpt_ex and checking its value.
     m, n = getSize(N)
@@ -620,6 +625,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
         return False
 
 def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', Cplex = False):
+    used[3] = 1
     # This function computes the distance from a given vector vec to the row span of a matrix.
     # The possible options for norm are 'one', 'two' and 'inf'; 'two' is currently unavailable.
     # The optional list Irrev specifies the set of row coefficients required to be nonnegative.
@@ -891,6 +897,7 @@ def reconfigureNetwork(N, irrev):
 
 
 def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disable = [], negative = [], option = 'null', Cplex = False):
+    used[4]=1
     # This function finds a feasible vector in the row/nullspace of N whose set of irreversible
     # reactions is given. The entry corresponding to special is 1 if pos is True, -1 otherwise.
     # Additional features: it is now possible to specify a subset of reactions to be disabled
@@ -902,6 +909,23 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
     variables = set([])
     # note: we are only looking for a feasible vector, hence no objective function required!
+
+    if option == 'row':
+        for i in range(m):
+            if [_f for _f in N[i] if _f]:
+                p.add_variable(name='X'+str(i), objective=0, lower=None, upper=None)
+                variables.add('X'+str(i))
+    for i in Rev:
+        if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
+            p.add_variable(name='V' + str(i), objective=1, lower=None, upper=None)
+            variables.add('V' + str(i))
+    for i in negative:
+        p.add_variable(name='V' + str(i), objective=0, lower=None, upper=0)
+        variables.add('V' + str(i))
+    for i in range(n):
+        if i not in Rev and i not in negative:
+            p.add_variable(name='V' + str(i), objective=0, lower=0, upper=None)
+            variables.add('V' + str(i))
     if option == 'row':
         for j in range(n):
             curDict = {'V'+str(j):-1}
@@ -912,6 +936,7 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     else: # assumes option = 'null'
         for i in range(m):
             curDict = {}
+            # print('HERE + ' + str(i))
             for j in range(n):
                 if N[i][j]:
                     curDict.update({'V'+str(j): N[i][j]})
@@ -924,23 +949,11 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
         for i in disable:
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(i): 1}, rhs=0)
 
-    if option == 'row':
-        for i in range(m):
-            if [_f for _f in N[i] if _f]:
-                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
-                variables.add('X'+str(i))
-
-    for i in Rev:
-        variables.add('V'+str(i))
-        if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
-            p.add_variable('V' + str(i), objective=0, lower=None, upper=None)
-        else:
-            p.add_variable('V' + str(i), objective=0, lower=0, upper=None)
-
     return processProblem(p, variables, True)
 
 
 def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial.lp', Cplex = False):
+    used[5] = 1
     # This function finds the minimum or the maximum ratio of two given entries in the nullspace
     # of N whose set of irreversible reactions is given. Maximize if Max is True, minimize if not.
     # If a ratio is specified, checks whether the difference react1 - ratio * react2 can equal 1.
@@ -1216,6 +1229,7 @@ def findUniqueEFMs(EFMs):
         return EFMs
 
 def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5, Filename = 'trial.lp', option = 'null', rec = True, I = [], Cplex = False):
+    used[6] = 1
     # This function finds the vector of smallest overall weight in the nullspace of N whose
     # reactions are assumed to be all irreversible unless rec is specified to be False.
     # In that case, the reactions considered to be irreversible should be specified in I.
@@ -1396,6 +1410,7 @@ def findMCS(N, special, Filename = 'trial.lp'):
     return MCSs
 
 def testCutSet(Cutset, N, Target, Filename = 'trial.lp', rec = True, I = [], Cplex = False):
+    used[7] = 1
     # This function determines whether a given subset of reactions represents a cutset
     # for a given target reaction in a network which is assumed to be irreversible,
     # unless rec is specified to be False. In that case, the reactions considered to be
@@ -1711,6 +1726,7 @@ def generateSubsets(n, k):
             break
 
 def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 'trial.lp', extra = {}, option = 'row', Cplex = False):
+    used[8] = 1
     # This function finds the nonnegative vector of smallest weight to be added to a vector
     # in the rowspace of N (nullspace if option is 'null') to make the resulting vector >=0.
     # The entry corresponding to special is 1. Extra lower bounds may be supplied as extra.
@@ -2292,6 +2308,7 @@ def classifyExchange(FullNetwork, externalMetabs, Irrev, extra = False):
     return (InputIrr, InputRev, OutputIrr, OutputRev, MixedIrr, MixedRev)
 
 def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp', Cplex = False):
+    used[9] = 1
     # This function finds the vector optimizing a given weight in the column space of N with
     # nonnegative entries and whose flux vector satisfies the irreversibility conditions.
     # The free metabolites are ones that can be considered given (i.e. they can be consumed).
@@ -2325,6 +2342,7 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
     return processProblem(p, True, variables)
 
 def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec = True, I = [], forbidden = [], Negative = [], Cplex = False):
+    used[10] = 1
     # This procedure finds the maximal growth rate of an organism in a medium defined
     # by the set of exchange reactions and the subset of allowed exchange reactions.
     # The bounds on the flux of each allowed reaction are given by the vector limits.
@@ -2386,6 +2404,10 @@ def processProblem(p, vector, opt = False, verbose = False):
     print('Here solved one...')
     verbose = True
     if status == qsoptex.SolutionStatus.OPTIMAL:
+        print('status:', '')
+        print(status, '')
+        print(', optimal:', '')
+        print(qsoptex.SolutionStatus.OPTIMAL, '')
         value = p.get_objective_value()
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
@@ -2393,9 +2415,9 @@ def processProblem(p, vector, opt = False, verbose = False):
         value = [float('Inf')]
         return value, {}
     elif status == qsoptex.SolutionStatus.INFEASIBLE:
+        value = []
         if verbose:
             print('Note: problem is infeasible!')
-        value = []
         return value, {}
     else:
         if verbose:
@@ -2415,10 +2437,10 @@ def processProblem(p, vector, opt = False, verbose = False):
             dico.update({var: p.get_value(var)})
         print('The answer is: ')
         print(value)
-        s = open('solution.txt', 'w')
-        s.write(str(value)+'\n')
-        s.write(str(dico)[1:-1])
-        s.close()
+        # s = open('solution.txt', 'w')
+        # s.write(str(value)+'\n')
+        # s.write(str(dico)[1:-1])
+        # s.close()
         return value, dico
     else:
         print('The answer is: ')
@@ -2437,3 +2459,6 @@ def processProblem(p, vector, opt = False, verbose = False):
         # print((value, dico))
         # exit()
         return value, dico
+
+def get_used():
+    return used

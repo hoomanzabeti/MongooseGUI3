@@ -990,34 +990,40 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
                 p.add_variable(name='X'+str(i), objective=0, lower=None, upper=None)
                 variables.add('X'+str(i))
                 print("I'm there")
-
+    print('>>>1')
     for i in Rev:
-        variables.add('V'+str(i))
         if i not in negative and [_f for _f in [N[k][i] for k in range(m)] if _f]:
-            p.add_variable(name='V' + str(i), objective=0, lower=None, upper=None)
-        else:
+            p.add_variable(name='V' + str(i), objective=1, lower=None, upper=None)
+            variables.add('V' + str(i))
+    for i in negative:
+        p.add_variable(name='V' + str(i), objective=0, lower=None, upper=0)
+        variables.add('V' + str(i))
+    for i in range(n):
+        if i not in Rev and i not in negative:
             p.add_variable(name='V' + str(i), objective=0, lower=0, upper=None)
-
-
-
+            variables.add('V' + str(i))
+    print('>>>2')
     if option == 'row':
+        print('>>>2.1')
         for j in range(n):
             curDict = {'V'+str(j):-1}
+            print('>>>2.1.1')
             for i in range(m):
                 if N[i][j]:
                     curDict.update({'X'+str(i): N[i][j]})
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
     else: # assumes option = 'null'
+        print('>>>2.2')
         for i in range(m):
             curDict = {}
             # print('HERE + ' + str(i))
             for j in range(n):
                 if N[i][j]:
                     curDict.update({'V'+str(j): N[i][j]})
-            # print('>>>')
+            # print('>>>2.2.1')
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
-            # print('<<<')
-
+            # print('>>>2.2.2')
+    print('>>>3')
     if pos:
         p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(special): 1}, rhs=1)
     else:
@@ -1025,7 +1031,7 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     if disable:
         for i in disable:
             p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, {'V' + str(i): 1}, rhs=0)
-    print('HERE(-1)')
+    print('>>>4')
 
     return processProblem(p, variables, True)
 
@@ -2429,6 +2435,10 @@ def processProblem(p, vector, opt = False, verbose = False):
     print('Here solved one...')
     verbose = True
     if status == qsoptex.SolutionStatus.OPTIMAL:
+        print('status:', '')
+        print(status, '')
+        print(', optimal:', '')
+        print(qsoptex.SolutionStatus.OPTIMAL, '')
         value = p.get_objective_value()
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
@@ -2436,9 +2446,9 @@ def processProblem(p, vector, opt = False, verbose = False):
         value = [float('Inf')]
         return value, {}
     elif status == qsoptex.SolutionStatus.INFEASIBLE:
+        value = []
         if verbose:
             print('Note: problem is infeasible!')
-        value = []
         return value, {}
     else:
         if verbose:
@@ -2458,10 +2468,10 @@ def processProblem(p, vector, opt = False, verbose = False):
             dico.update({var: p.get_value(var)})
         print('The answer is: ')
         print(value)
-        s = open('solution.txt', 'w')
-        s.write(str(value)+'\n')
-        s.write(str(dico)[1:-1])
-        s.close()
+        # s = open('solution.txt', 'w')
+        # s.write(str(value)+'\n')
+        # s.write(str(dico)[1:-1])
+        # s.close()
         return value, dico
     else:
         print('The answer is: ')
