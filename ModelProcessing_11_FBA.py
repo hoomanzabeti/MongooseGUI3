@@ -2383,7 +2383,7 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
 
     variables = set(['V'+str(growth)])
-    p.add_variable('V'+str(growth), objective=1, lower=0, upper=None)
+    p.add_variable(name='V'+str(growth), objective=1, lower=0, upper=None)
 
     for i in range(m):
         curDict={}
@@ -2409,11 +2409,11 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     if Negative:
         for i in range(n):
             if i in Negative:
-                p.add_variable('V'+str(i), objective=1 if i==growth else 0, lower=None, upper=0)
+                p.add_variable(name='V'+str(i), objective=1 if i==growth else 0, lower=None, upper=0)
             elif i in Rev and [_f for _f in [N[k][i] for k in range(m)] if _f]:
-                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=None, upper=None)
+                p.add_variable(name='V' + str(i), objective=1 if i == growth else 0, lower=None, upper=None)
             else:
-                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=0, upper=None)
+                p.add_variable(name='V' + str(i), objective=1 if i == growth else 0, lower=0, upper=None)
             variables.add('V'+str(i))
 
     return processProblem(p, variables)

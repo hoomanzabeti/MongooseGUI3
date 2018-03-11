@@ -1322,28 +1322,28 @@ def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5,
     if option == 'null':
         if rec:
             for i in range(n):
-                p.add_variable('V' + str(i), objective=weight[i] if len(weight) == n else 1, lower=0, upper=None)
+                p.add_variable(name='V' + str(i), objective=weight[i] if len(weight) == n else 1, lower=0, upper=None)
             for i in range(m):
-                p.add_variable('T' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='T' + str(i), objective=0, lower=0, upper=None)
         else:
             for j in range(n):
                 if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                    p.add_variable('V' + str(j), objective=0, lower=None, upper=None)
+                    p.add_variable(name='V' + str(j), objective=0, lower=None, upper=None)
                 else:
-                    p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
-                p.add_variable('T' + str(j), objective=weight[j] if len(weight) == n else 1, lower=0, upper=None)
+                    p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='T' + str(j), objective=weight[j] if len(weight) == n else 1, lower=0, upper=None)
     elif option == 'col':
         for j in range(m):
             if [_f for _f in N[j] if _f]:
-                p.add_variable('W' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='W' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('W' + str(j), objective=0, lower=0, upper=None)
-            p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='W' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
         for i in range(m):
             if len(weight) == m:
-                p.add_variable('T'+str(i), objective= weight[i], lower=0, upper=None)
+                p.add_variable(name='T'+str(i), objective= weight[i], lower=0, upper=None)
             else:   # equal weights, take all of them equal to 1
-                p.add_variable('T'+str(i), objective=1,lower=0, upper=None)
+                p.add_variable(name='T'+str(i), objective=1,lower=0, upper=None)
     else:
         print('Error: unrecognized option!')
         return

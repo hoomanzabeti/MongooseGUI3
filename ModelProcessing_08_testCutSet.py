@@ -1467,9 +1467,9 @@ def testCutSet(Cutset, N, Target, Filename = 'trial.lp', rec = True, I = [], Cpl
     if not rec:
         for j in range(n):
             if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='V'+str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
             variables.add('V'+str(j))
     val = processProblem(p, variables)
     return (type(val) == type([]) and len(val) == 0) # TRUE IFF THE PROBLEM IS INFEASIBLE

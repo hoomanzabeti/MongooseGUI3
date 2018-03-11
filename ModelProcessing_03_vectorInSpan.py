@@ -701,7 +701,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     p = qsoptex.ExactProblem()
 
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
-    p.add_variable('Y', objective=1, lower=0, upper=None)
+    p.add_variable(name='Y', objective=1, lower=0, upper=None)
     variables = set(['Y'])
 
     for j in range(n):
@@ -716,7 +716,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     for i in range(m):
         if [_f for _f in N[i] if _f]:
             variables.add('X' + str(i))
-            p.add_variable('X'+str(i), objective=0, lower=-1, upper=1)
+            p.add_variable(name='X'+str(i), objective=0, lower=-1, upper=1)
 
     val = processProblem(p, variables, False)
     if val:

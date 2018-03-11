@@ -12,6 +12,8 @@ from Utilities import *
 import multiprocessing
 import qsoptex
 
+# print('Salam')
+
 zero, one = Fraction(0), Fraction(1)
 used = [0] * 11
 
@@ -95,6 +97,7 @@ def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
     return (current, Irrev) + reductionRecord
 
 def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt", signs = False):
+    print('Step #2')
     m, n = getSize(Matrix)
     curirrev   = [bool(x in Irrev) for x in range(n)]
     # create a list of external reactions
@@ -144,11 +147,14 @@ def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt
     curirrev = filterOut(curirrev, deletedReacts)
     # Step 5) find all possible sign combinations
     allSigns = []
+    print('Step #3')
     if signs:
+        print('Step #4')
         curIrrev = findTrueIndices (curirrev)
         curRev   = findFalseIndices(curirrev)
         r = len(curRev)
         if (r > 0 and r <= 20): # NOTE: Do NOT use if r > 20, as it might take too long!
+            print('Step #5')
             allSigns = checkAllSigns(current, curRev)
         else:
             print('No or too many internal reversible reactions!')
@@ -176,6 +182,7 @@ def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt
     return (current, Irrev, newExternal, allSigns) + reductionRecord
 
 def fullIterativeReduce(Matrix, Irrev, External, Filename = "IterativeReduction.txt"):
+    print('Step #1')
     # Iteratively reduces a system by applying flux-balance and energy-balance constraints
     Iter = 1
     (mF,nF) = getSize(Matrix)
@@ -527,6 +534,7 @@ def processSBlocked(N):
     return (SBlocked, newN, newB)
 
 def checkAllSigns(N, Rev):
+    print('We are finally here!')
     # This function produces a list of all possible sign combinations for the reversible reactions
     # in the row combinations of N, assuming that the irreversible reactions must be non-negative.
     r = len(Rev)
@@ -551,7 +559,7 @@ def flipSigns(signs):
 
 def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
     used[1] = 1
-    # Thus function checks whether a particular sign pattern on the reversible reactions gives
+    # This function checks whether a particular sign pattern on the reversible reactions gives
     # a feasible vector in the rowspace of the input matrix; signs is a string of '+' and '-'.
     m, n = getSize(N)
     negIndices = [i for i, x in enumerate(signs) if x == '-']
@@ -574,13 +582,16 @@ def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
 
     for i in range(m):
         if [_f for _f in N[i] if _f]:
-            p.add_variable('X' + str(i), objective = 0, lower=None, upper=None)
+            p.add_variable(name='X' + str(i), objective = 0, lower=None, upper=None)
             variables.add('X' + str(i))
 
-    for j in positives:
-        p.add_variable('Y' + j , obejective=0, lower=1, upper=None)
-    for j in negatives:
-        p.add_variable('Y' + j, obejective=0, lower=None, upper=-1)
+    for j in range(n):
+        if j in positives:
+            p.add_variable(name='Y' + j, obejective=0, lower=1, upper=None)
+        elif j in negatives:
+            p.add_variable(name='Y' + j, obejective=0, lower=None, upper=-1)
+        else:
+            p.add_variable(name='Y' + j, obejective=0, lower=0, upper=None)
 
     val = processProblem(p, variables, False)
     if (type(val) == type([]) and len(val) == 0): # infeasible
@@ -601,7 +612,7 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     p = qsoptex.ExactProblem()
 
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
-    p.add_variable('Y', objective=1, lower=0, upper=None)
+    p.add_variable(name='Y', objective=1, lower=0, upper=None)
     variables = set(['Y'])
 
     for j in range(n):
@@ -616,9 +627,9 @@ def vectorInSpan(N, vec, Filename = 'trial.lp', Cplex = False):
     for i in range(m):
         if [_f for _f in N[i] if _f]:
             variables.add('X' + str(i))
-            p.add_variable('X'+str(i), objective=0, lower=-1, upper=1)
+            p.add_variable(name='X'+str(i), objective=0, lower=-1, upper=1)
 
-    val = processProblem(p, variables, False)
+    val = processProblem(p, variables, False, verbose=True)
     if val:
         return True
     else:
@@ -637,22 +648,22 @@ def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', 
     p = qsoptex.ExactProblem()
     p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
     variables = set(['Y'])
-    p.add_variable('Y', objective=1, lower=0, upper=None)
+    p.add_variable(name='Y', objective=1, lower=0, upper=None)
     for i in range(m):
         if [_f for _f in N[i] if _f]:
             variables.add('X' + str(i))
             if i not in Irrev:
-                p.add_variable('X'+str(i),objective=0, lower=None, upper=None)
+                p.add_variable(name='X'+str(i),objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(i), objective=0, lower=0, upper=None)
 
     for j in range(n):
         variables.add('V' + str(j))
-        p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+        p.add_variable(name='V'+str(j), objective=0, lower=None, upper=None)
         variables.add('T' + str(j))
-        p.add_variable('T' + str(j), objective=0, lower=None, upper=None)
+        p.add_variable(name='T' + str(j), objective=0, lower=None, upper=None)
         variables.add('Y' + str(j))
-        p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+        p.add_variable(name='Y' + str(j), objective=0, lower=0, upper=None)
 
     for j in range(n):
         curDict = {}
@@ -967,11 +978,11 @@ def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial
         p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
     if ratio != 0:
         num, den = ratio.numerator, ratio.denominator
-        p.add_variable('V'+ str(react1), objective = den, lower=None, upper=None)
-        p.add_variable('V' + str(react2), objective = -num, lower=None, upper=None)
+        p.add_variable(name='V'+ str(react1), objective = den, lower=None, upper=None)
+        p.add_variable(name='V' + str(react2), objective = -num, lower=None, upper=None)
     else:
-        p.add_variable('V' + str(react1), objective=0, lower=None, upper=None)
-        p.add_variable('V' + str(react2), objective=1, lower=None, upper=None)
+        p.add_variable(name='V' + str(react1), objective=0, lower=None, upper=None)
+        p.add_variable(name='V' + str(react2), objective=1, lower=None, upper=None)
     variables.add('V' + str(react1))
     variables.add('V' + str(react2))
 
@@ -990,7 +1001,7 @@ def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial
     # bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if [_f for _f in [N[k][i] for k in range(m)] if _f]])
     for i in range(n):
         if i != react1 or i != react2:
-            p.add_variable('V'+str(i), objective=0, lower=None, upper=None)
+            p.add_variable(name='V'+str(i), objective=0, lower=None, upper=None)
             variables.add('V'+str(i))
 
     return processProblem(p, variables)
@@ -1255,28 +1266,28 @@ def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5,
     if option == 'null':
         if rec:
             for i in range(n):
-                p.add_variable('V' + str(i), objective=weight[i] if len(weight) == n else 1, lower=0, upper=None)
+                p.add_variable(name='V' + str(i), objective=weight[i] if len(weight) == n else 1, lower=0, upper=None)
             for i in range(m):
-                p.add_variable('T' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='T' + str(i), objective=0, lower=0, upper=None)
         else:
             for j in range(n):
                 if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                    p.add_variable('V' + str(j), objective=0, lower=None, upper=None)
+                    p.add_variable(name='V' + str(j), objective=0, lower=None, upper=None)
                 else:
-                    p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
-                p.add_variable('T' + str(j), objective=weight[j] if len(weight) == n else 1, lower=0, upper=None)
+                    p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='T' + str(j), objective=weight[j] if len(weight) == n else 1, lower=0, upper=None)
     elif option == 'col':
         for j in range(m):
             if [_f for _f in N[j] if _f]:
-                p.add_variable('W' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='W' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('W' + str(j), objective=0, lower=0, upper=None)
-            p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='W' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
         for i in range(m):
             if len(weight) == m:
-                p.add_variable('T'+str(i), objective= weight[i], lower=0, upper=None)
+                p.add_variable(name='T'+str(i), objective= weight[i], lower=0, upper=None)
             else:   # equal weights, take all of them equal to 1
-                p.add_variable('T'+str(i), objective=1,lower=0, upper=None)
+                p.add_variable(name='T'+str(i), objective=1,lower=0, upper=None)
     else:
         print('Error: unrecognized option!')
         return
@@ -1324,7 +1335,7 @@ def findMin1Norm(N, special, weight = [1], zeros = [], exclude = [], eps = 1e-5,
         else:
             print("Error: the length of the excluded vectors is incorrect!")
 
-    return processProblem(p, variables, True)
+    return processProblem(p, variables, True, verbose=true)
 
 
 def LCM(a,b):
@@ -1428,9 +1439,9 @@ def testCutSet(Cutset, N, Target, Filename = 'trial.lp', rec = True, I = [], Cpl
     if not rec:
         for j in range(n):
             if j not in I and [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='V'+str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('V' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='V' + str(j), objective=0, lower=0, upper=None)
             variables.add('V'+str(j))
     val = processProblem(p, variables)
     return (type(val) == type([]) and len(val) == 0) # TRUE IFF THE PROBLEM IS INFEASIBLE
@@ -1737,7 +1748,7 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
     variables = set([])
 
     for i in range(n):
-        p.add_variable('T' + str(i), objective=weight[i] if len(weight)==n else 1, lower=0, upper=None)
+        p.add_variable(name='T' + str(i), objective=weight[i] if len(weight)==n else 1, lower=0, upper=None)
         variables.add('T'+str(i))
 
     if option == 'row':
@@ -1780,15 +1791,15 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
     if option == 'row':
         for i in range(m):
             if [_f for _f in N[i] if _f]:
-                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
+                p.add_variable(name='X'+str(i), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(i), objective=0, lower=0, upper=None)
 
         for j in range(n):
             if j not in extra:
-                p.add_variable('Y' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='Y' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('Y' + str(j), objective=0, lower=round(extra[j],5), upper=0)
+                p.add_variable(name='Y' + str(j), objective=0, lower=round(extra[j],5), upper=0)
         ## AL; changed order of bounds to make QSopt_ex not complain
         # bounds += ''.join(['Y'+str(j)+'<='+str(round(extra[j],5)) + '\n' for j in extra])
         print(''.join([str(round(extra[j],5))+'<=' + 'Y' + str(j)+'<= 0'+ '\n' for j in extra]))
@@ -1801,10 +1812,10 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
         bounds += ''.join(['X' + str(j) + ' free\n' for j in range(n) if [_f for _f in [N[i][j] for i in range(m)] if _f]])
         for i in range(n):
             if [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='X' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
-            p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='Y' + str(j), objective=0, lower=0, upper=None)
 
     return processProblem(p,variables, True,destroyIn=False,destroyOut=False)
 
@@ -2322,15 +2333,15 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
     for i in range(m):
         variables.add('Y'+str(i))
         if i in freeMetabs:
-            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=-1, upper=1)
+            p.add_variable(name='Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=-1, upper=1)
         else:
-            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=0, upper=1)
+            p.add_variable(name='Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=0, upper=1)
     for j in range(n):
         variables.add('X'+str(j))
         if j not in Irrev:
-            p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+            p.add_variable(name='X' + str(j), objective=0, lower=None, upper=None)
         else:
-            p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='X' + str(j), objective=0, lower=0, upper=None)
 
 
     for i in range(m):
@@ -2362,7 +2373,7 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     p.set_objective_sense(qsoptex.ObjectiveSense.MAXIMIZE)
 
     variables = set(['V'+str(growth)])
-    p.add_variable('V'+str(growth), objective=1, lower=0, upper=None)
+    p.add_variable(name='V'+str(growth), objective=1, lower=0, upper=None)
 
     for i in range(m):
         curDict={}
@@ -2388,26 +2399,27 @@ def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec =
     if Negative:
         for i in range(n):
             if i in Negative:
-                p.add_variable('V'+str(i), objective=1 if i==growth else 0, lower=None, upper=0)
+                p.add_variable(name='V'+str(i), objective=1 if i==growth else 0, lower=None, upper=0)
             elif i in Rev and [_f for _f in [N[k][i] for k in range(m)] if _f]:
-                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=None, upper=None)
+                p.add_variable(name='V' + str(i), objective=1 if i == growth else 0, lower=None, upper=None)
             else:
-                p.add_variable('V' + str(i), objective=1 if i == growth else 0, lower=0, upper=None)
+                p.add_variable(name='V' + str(i), objective=1 if i == growth else 0, lower=0, upper=None)
             variables.add('V'+str(i))
 
     return processProblem(p, variables)
 
 
 def processProblem(p, vector, opt = False, verbose = False):
-    print('Here solving one...')
+    # print('Here solving one...')
     status = p.solve()
-    print('Here solved one...')
-    verbose = True
+    # print('Here solved one...')
+    # verbose = True
     if status == qsoptex.SolutionStatus.OPTIMAL:
-        print('status:', '')
-        print(status, '')
-        print(', optimal:', '')
-        print(qsoptex.SolutionStatus.OPTIMAL, '')
+        if verbose:
+            print('status:', '')
+            print(status, '')
+            print(', optimal:', '')
+            print(qsoptex.SolutionStatus.OPTIMAL, '')
         value = p.get_objective_value()
     elif status == qsoptex.SolutionStatus.UNBOUNDED:
         if verbose:
@@ -2435,12 +2447,13 @@ def processProblem(p, vector, opt = False, verbose = False):
 
         for var in vector:
             dico.update({var: p.get_value(var)})
-        print('The answer is: ')
-        print(value)
-        # s = open('solution.txt', 'w')
-        # s.write(str(value)+'\n')
-        # s.write(str(dico)[1:-1])
-        # s.close()
+        if verbose:
+            print('The answer is: ')
+            print(value)
+            s = open('solution.txt', 'w')
+            s.write(str(value)+'\n')
+            s.write(str(dico)[1:-1])
+            s.close()
         return value, dico
     else:
         print('The answer is: ')
@@ -2456,7 +2469,8 @@ def processProblem(p, vector, opt = False, verbose = False):
         for var in vector:
             dico.update({var: p.get_value(var)})
             # print(p)
-        # print((value, dico))
+        if verbose:
+            print((value, dico))
         # exit()
         return value, dico
 

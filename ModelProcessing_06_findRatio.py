@@ -1030,11 +1030,11 @@ def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial
         p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
     if ratio != 0:
         num, den = ratio.numerator, ratio.denominator
-        p.add_variable('V'+ str(react1), objective = den, lower=None, upper=None)
-        p.add_variable('V' + str(react2), objective = -num, lower=None, upper=None)
+        p.add_variable(name='V'+ str(react1), objective = den, lower=None, upper=None)
+        p.add_variable(name='V' + str(react2), objective = -num, lower=None, upper=None)
     else:
-        p.add_variable('V' + str(react1), objective=0, lower=None, upper=None)
-        p.add_variable('V' + str(react2), objective=1, lower=None, upper=None)
+        p.add_variable(name='V' + str(react1), objective=0, lower=None, upper=None)
+        p.add_variable(name='V' + str(react2), objective=1, lower=None, upper=None)
     variables.add('V' + str(react1))
     variables.add('V' + str(react2))
 
@@ -1053,7 +1053,7 @@ def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial
     # bounds += ''.join(['V' + str(i) + ' free\n' for i in Rev if [_f for _f in [N[k][i] for k in range(m)] if _f]])
     for i in range(n):
         if i != react1 or i != react2:
-            p.add_variable('V'+str(i), objective=0, lower=None, upper=None)
+            p.add_variable(name='V'+str(i), objective=0, lower=None, upper=None)
             variables.add('V'+str(i))
 
     return processProblem(p, variables)

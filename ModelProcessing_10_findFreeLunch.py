@@ -2342,15 +2342,15 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
     for i in range(m):
         variables.add('Y'+str(i))
         if i in freeMetabs:
-            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=-1, upper=1)
+            p.add_variable(name='Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=-1, upper=1)
         else:
-            p.add_variable('Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=0, upper=1)
+            p.add_variable(name='Y' + str(i), objective=weight[i] if len(weight) == m else 1, lower=0, upper=1)
     for j in range(n):
         variables.add('X'+str(j))
         if j not in Irrev:
-            p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+            p.add_variable(name='X' + str(j), objective=0, lower=None, upper=None)
         else:
-            p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='X' + str(j), objective=0, lower=0, upper=None)
 
 
     for i in range(m):

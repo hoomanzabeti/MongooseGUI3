@@ -736,22 +736,22 @@ def computeDistance(N, vec, norm = 'inf', Irrev = [], Filename = 'Distance.lp', 
     p = qsoptex.ExactProblem()
     p.set_objective_sense(qsoptex.ObjectiveSense.MINIMIZE)
     variables = set(['Y'])
-    p.add_variable('Y', objective=1, lower=0, upper=None)
+    p.add_variable(name='Y', objective=1, lower=0, upper=None)
     for i in range(m):
         if [_f for _f in N[i] if _f]:
             variables.add('X' + str(i))
             if i not in Irrev:
-                p.add_variable('X'+str(i),objective=0, lower=None, upper=None)
+                p.add_variable(name='X'+str(i),objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(i), objective=0, lower=0, upper=None)
 
     for j in range(n):
         variables.add('V' + str(j))
-        p.add_variable('V'+str(j), objective=0, lower=None, upper=None)
+        p.add_variable(name='V'+str(j), objective=0, lower=None, upper=None)
         variables.add('T' + str(j))
-        p.add_variable('T' + str(j), objective=0, lower=None, upper=None)
+        p.add_variable(name='T' + str(j), objective=0, lower=None, upper=None)
         variables.add('Y' + str(j))
-        p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+        p.add_variable(name='Y' + str(j), objective=0, lower=0, upper=None)
 
     for j in range(n):
         curDict = {}

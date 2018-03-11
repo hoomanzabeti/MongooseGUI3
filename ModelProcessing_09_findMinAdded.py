@@ -1784,7 +1784,7 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
     variables = set([])
 
     for i in range(n):
-        p.add_variable('T' + str(i), objective=weight[i] if len(weight)==n else 1, lower=0, upper=None)
+        p.add_variable(name='T' + str(i), objective=weight[i] if len(weight)==n else 1, lower=0, upper=None)
         variables.add('T'+str(i))
 
     if option == 'row':
@@ -1827,15 +1827,15 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
     if option == 'row':
         for i in range(m):
             if [_f for _f in N[i] if _f]:
-                p.add_variable('X'+str(i), objective=0, lower=None, upper=None)
+                p.add_variable(name='X'+str(i), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(i), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(i), objective=0, lower=0, upper=None)
 
         for j in range(n):
             if j not in extra:
-                p.add_variable('Y' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='Y' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('Y' + str(j), objective=0, lower=round(extra[j],5), upper=0)
+                p.add_variable(name='Y' + str(j), objective=0, lower=round(extra[j],5), upper=0)
         ## AL; changed order of bounds to make QSopt_ex not complain
         # bounds += ''.join(['Y'+str(j)+'<='+str(round(extra[j],5)) + '\n' for j in extra])
         print(''.join([str(round(extra[j],5))+'<=' + 'Y' + str(j)+'<= 0'+ '\n' for j in extra]))
@@ -1848,10 +1848,10 @@ def findMinAdded(N, special, weight = [1], exclude = [], eps = 1e-5, Filename = 
         bounds += ''.join(['X' + str(j) + ' free\n' for j in range(n) if [_f for _f in [N[i][j] for i in range(m)] if _f]])
         for i in range(n):
             if [_f for _f in [N[i][j] for i in range(m)] if _f]:
-                p.add_variable('X' + str(j), objective=0, lower=None, upper=None)
+                p.add_variable(name='X' + str(j), objective=0, lower=None, upper=None)
             else:
-                p.add_variable('X' + str(j), objective=0, lower=0, upper=None)
-            p.add_variable('Y' + str(j), objective=0, lower=0, upper=None)
+                p.add_variable(name='X' + str(j), objective=0, lower=0, upper=None)
+            p.add_variable(name='Y' + str(j), objective=0, lower=0, upper=None)
 
     return processProblem(p,variables, True,destroyIn=False,destroyOut=False)
 

@@ -1,4 +1,4 @@
-# This file contains functions for processing metabolic models with Mongoose
+w# This file contains functions for processing metabolic models with Mongoose
 # Created by: Leonid Chindelevitch
 # Last modified: January 30, 2017
 
@@ -653,8 +653,7 @@ def flipSigns(signs):
 
 
 def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
-    print('\n##\n##\n##\n TEST \n##\n##\n##')
-    # Thus function checks whether a particular sign pattern on the reversible reactions gives
+    # This function checks whether a particular sign pattern on the reversible reactions gives
     # a feasible vector in the rowspace of the input matrix; signs is a string of '+' and '-'.
     m, n = getSize(N)
     negIndices = [i for i, x in enumerate(signs) if x == '-']
@@ -680,10 +679,13 @@ def checkSigns(N, Rev, signs, Filename = 'signs.lp', Cplex = False):
             p.add_variable('X' + str(i), objective = 0, lower=None, upper=None)
             variables.add('X' + str(i))
 
-    for j in positives:
-        p.add_variable('Y' + j , obejective=0, lower=1, upper=None)
-    for j in negatives:
-        p.add_variable('Y' + j, obejective=0, lower=None, upper=-1)
+    for j in range(n):
+        if j in positives:
+            p.add_variable('Y' + j, obejective=0, lower=1, upper=None)
+        elif j in negatives:
+            p.add_variable('Y' + j, obejective=0, lower=None, upper=-1)
+        else:
+            p.add_variable('Y' + j, obejective=0, lower=0, upper=None)
 
     val = processProblem(p, variables, False)
     if (type(val) == type([]) and len(val) == 0): # infeasible
