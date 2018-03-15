@@ -1078,9 +1078,9 @@ def processFile(Filename, opt = False, destroyIn = True, destroyOut = True, supp
     result = parseOutput(outFile, opt)
     if destroyOut:
         subprocess.call(["rm", outFile])
-    print(result)
-    print("the answer is ")
-    print(result[0])
+    # print(result)
+    # print("the answer is ")
+    # print(result[0])
     # exit()
     return result
 

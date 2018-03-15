@@ -1828,6 +1828,7 @@ def checkUnblocked(RemoveConst, N, Irr, growth, Filename = 'Unblock.lp'):
     return not (type(val) == type([]) and len(val) == 0) # TRUE IFF THE PROBLEM IS FEASIBLE
 
 def minimalUnblock(N, Irr, growth, algo = 'norm', Filename = 'Unblock.lp'):
+    print('We are here <1>')
     # This function uses a heuristic to compute the smallest set of metabolites
     # that need to be unbalanced in order to produce growth in a blocked model.
     # N is the stoichiometric matrix, Irr are the irreversible reactions, growth
@@ -1860,6 +1861,7 @@ def minimalUnblock(N, Irr, growth, algo = 'norm', Filename = 'Unblock.lp'):
             z = [n - len(Rev) + j]
         else:
             z = []
+        print('We are here <2>')
         (val, vec) = findMin1Norm(Ntemp, growth, [1], z, [], Filename = Filename, option = 'col')
         for x in list(vec.keys()):
             if not x.startswith('T'):
@@ -2350,7 +2352,7 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
             curDict.update({'X'+str(j):N[i][j]})
         p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
 
-    return processProblem(p, True, variables)
+    return processProblem(p, variables, True)
 
 def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec = True, I = [], forbidden = [], Negative = [], Cplex = False):
     used[10] = 1

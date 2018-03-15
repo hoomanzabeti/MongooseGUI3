@@ -7,7 +7,10 @@ s = shelve.open('ParsedModel')
 s['AB1'] = model
 model.reduceNetwork()
 # fullIterativeReduce(model.Matrix, model.findIrreversibleReactions(), model.findExchangeReactions(), Filename = "IterativeReduction.txt")
-minimalUnblock(model.Matrix, model.findIrreversibleReactions(), model.findBiomassReaction())
+# minimalUnblock(model.Matrix, model.findIrreversibleReactions(), model.findBiomassReaction())
+print(findFreeLunch(model.Matrix, model.findIrreversibleReactions()))
+
+
 # model.checkReduced()
 # model.createMatrices()
 # model.reducedMatrix

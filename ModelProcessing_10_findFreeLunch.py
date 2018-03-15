@@ -2359,7 +2359,7 @@ def findFreeLunch(N, Irrev, weight = [1], freeMetabs = [], Filename = 'trial.lp'
             curDict.update({'X'+str(j):N[i][j]})
         p.add_linear_constraint(qsoptex.ConstraintSense.EQUAL, curDict, rhs=0)
 
-    return processProblem(p, True, variables)
+    return processProblem(p, variables, True)
 
 
 def FBA(N, growth, Exchange, allowed, limits = [1], Filename = 'trial.lp', rec = True, I = [], forbidden = [], Negative = [], Cplex = False):
